@@ -77,7 +77,7 @@ class EthProcessHelper {
       // let dataToInsert: any = [];
       // for (let i: any = old_block; i <= current_block; i++) {
       // blocks.push(i)
-      let dataToInsert = { block_number: old_block, coin_family: config.STATIC_COIN_FAMILY.ETH, start_block: old_block, end_block: current_block }
+      let dataToInsert = { block_number: old_block, coin_family: config.STATIC_COIN_FAMILY.ETH, start_block: old_block, end_block: current_block, status: 0 }
       // }
       console.log("dataToInsert>>>>", dataToInsert)
       // await EthOldBLockModel.destroy({ where: { block_number: { [Op.in]: blocks } } })
@@ -294,6 +294,7 @@ class EthProcessHelper {
     try {
       let behindBlocks: any = await EthOldBLockModel.findOne({
         attributes: ['id', 'block_number', 'start_block', 'end_block'],
+        where: { status: 0 },
         raw: true,
         order: [['id', 'ASC']]
       })
