@@ -24,7 +24,7 @@ export const config = {
     FCM_PUSH: zookeeperConfig.config.FCM_PUSH
   },
   REDISKEYS: {
-    ETH_BLOCKS: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.ETH_BLOCKS} `,
+    ETH_BLOCKS: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.ETH_BLOCKS}`,
     OLD_BLOCK_ETH: zookeeperConfig.config.OLD_BLOCK_ETH,
     NEW_BLOCK_ETH: zookeeperConfig.config.NEW_BLOCK_ETH,
     ALL_PROCESSES: zookeeperConfig.config.ALL_PROCESSES,
