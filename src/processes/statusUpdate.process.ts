@@ -34,8 +34,8 @@ class EthTxStatusUpdateProcess {
     const { getTransaction, getTransactionReceipt } = Blockchain_Helper.Web3.eth;
     try {
       const transaction = await getTransaction(data.tx_id);
-      const transactionReceipt = await getTransactionReceipt(data.tx_id);
-      if (transaction.blockNumber) {
+      if (transaction && transaction?.blockNumber) {
+        const transactionReceipt = await getTransactionReceipt(data.tx_id);
         let gasReverted: number | undefined;
         const gasUsed = transactionReceipt.gasUsed
           ? transactionReceipt.gasUsed
