@@ -12,7 +12,7 @@ import kafkaHelper from "../config/kafka.helper";
 
 
 class EthDepositWithdrawProcess {
-  
+
   public startDepositQueue = async () => {
     let consumer = await kafkaHelper.kafka.consumer({
       groupId: config.KAFKA_TRANSACTIONS.DEPOSIT_WITHDRAW_GROUP_ID,
@@ -184,22 +184,22 @@ class EthDepositWithdrawProcess {
 
       if (Addressdeposit) {
         let trnxTypeD: string = "Deposit";
-        switch (tx_type) {
-          case TrnxTypeEnum.SMARTCONTRACTINTERACTION:
-            trnxTypeD = "Smart Contract Interaction";
-            break;
-          case TrnxTypeEnum.APPROVE:
-            trnxTypeD = "Approval";
-            break;
-          case TrnxTypeEnum.SWAP:
-            trnxTypeD = "Swap";
-            break;
-          case TrnxTypeEnum.CROSS_CHAIN:
-            trnxTypeD = "Cross-chain Swap";
-            break;
-          default:
-            break;
-        }
+        // switch (tx_type) {
+        //   case TrnxTypeEnum.SMARTCONTRACTINTERACTION:
+        //     trnxTypeD = "Smart Contract Interaction";
+        //     break;
+        //   case TrnxTypeEnum.APPROVE:
+        //     trnxTypeD = "Approval";
+        //     break;
+        //   case TrnxTypeEnum.SWAP:
+        //     trnxTypeD = "Swap";
+        //     break;
+        //   case TrnxTypeEnum.CROSS_CHAIN:
+        //     trnxTypeD = "Cross-chain Swap";
+        //     break;
+        //   default:
+        //     break;
+        // }
         /** update to adrs wallet balance */
         let balance: any = await Wallet_Helper.Update_Balance(
           to_address, /// wallet_address,
@@ -211,7 +211,7 @@ class EthDepositWithdrawProcess {
         )} ${coin?.coin_symbol?.toUpperCase()} has been confirmed.`;
 
         let notifData: NotificationInterface = {
-          title: NotificationTypeEnum.DEPOSIT?.toUpperCase(),
+          title: trnxTypeD?.toUpperCase(),
           message: notiMsg,
           amount: amount,
           from_user_id: user_id,
@@ -267,7 +267,7 @@ class EthDepositWithdrawProcess {
         )} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
 
         let notifData: NotificationInterface = {
-          title: NotificationTypeEnum.WITHDRAW?.toUpperCase(),
+          title: trnxTypeW?.toUpperCase(),
           amount: amount,
           message: notiMsg,
           from_user_id: 0,
@@ -278,7 +278,7 @@ class EthDepositWithdrawProcess {
           coin_symbol: coin.coin_symbol,
           coin_family: coin.coin_family,
           coin_id: coin.coin_id,
-          notification_type: NotificationTypeEnum.WITHDRAW,
+          notification_type: trnxTypeW,
           state: "confirmed"
         };
 
