@@ -85,39 +85,83 @@ class Eth_block_process {
         const { getBlock } = Blockchain_Helper.Web3.eth;
         try {
             const blockInfo = await getBlock(blockId, true);
-            if (blockInfo) {
-                if (blockInfo.transactions) {
-                    for await (let tx of blockInfo.transactions) {
-                        console.log('tx.hash >>', tx.hash, 'blockId >>>', blockId);
-                        let data: blocks_trnx = {
-                            block_number: blockId,
-                            tx_id: tx.hash ? tx.hash : '',
-                            value: tx.value ? tx.value : '',
-                            fromAddress: tx.from ? tx.from : '',
-                            toAddress: tx.to ? tx.to : '',
-                            retry_count: 0,
-                            key: null,
-                            pair: null
-                        }
-                        if (key == KEYS.latestBlock) {
-                            data.key = 'latest';
-                            // let queue_length: any = await rabbitMq.queue_length(config.TRANSACTIONS.eth_all_blocks)
-                            // console.log("queue_length>>>", queue_length)
-                            await kafkaHelper.produceMessage(this.eth_block_tx_topic, data);
-                            //rabbitMq.send_tx_to_queue(config.TRANSACTIONS.eth_all_blocks, Buffer.from(JSON.stringify(data)))
-                        } else {
-                            data.key = 'behined & specific'
-                            await kafkaHelper.produceMessage(this.eth_behind_block_tx_topic, data);
-                            //rabbitMq.send_tx_to_queue(config.KAFKA_BLOCKS.eth_behined_block_topic, Buffer.from(JSON.stringify(data)))
-                        }
-                    }
-                } else {
-                    console.log("no block info trnasactions")
-                }
-            } else {
-                console.log("No blockinfo");
-                await EthOldBLockModel.create({ block_number: blockId, coin_family: config.STATIC_COIN_FAMILY.BNB, start_block: blockId, end_block: blockId, status: 0 })
+            if (!blockInfo) {
+                console.log("No block info");
+                await EthOldBLockModel.create({
+                    block_number: blockId,
+                    coin_family: config.STATIC_COIN_FAMILY.BNB,
+                    start_block: blockId,
+                    end_block: blockId,
+                    status: 0
+                });
+                return; // Exit early if blockInfo is not available
             }
+            if (!blockInfo.transactions || blockInfo.transactions.length === 0) {
+                console.log("No block info transactions");
+                return; // Exit early if there are no transactions
+            }
+            const transactionPromises = blockInfo.transactions.map(async (tx) => {
+                console.log('tx.hash >>', tx.hash, 'blockId >>>', blockId);
+
+                const data: blocks_trnx = {
+                    block_number: blockId,
+                    tx_id: tx.hash || '',
+                    value: tx.value || '',
+                    fromAddress: tx.from || '',
+                    toAddress: tx.to || '',
+                    retry_count: 0,
+                    key: null,
+                    pair: null
+                };
+
+                data.key = (key === KEYS.latestBlock) ? 'latest' : 'behined & specific';
+                const targetTopic = (key === KEYS.latestBlock) ? this.eth_block_tx_topic : this.eth_behind_block_tx_topic;
+
+                try {
+                    await kafkaHelper.produceMessage(targetTopic, data);
+                    // If you were using RabbitMQ, you'd uncomment the appropriate line:
+                    // const queue = (key === KEYS.latestBlock) ? config.TRANSACTIONS.eth_all_blocks : config.KAFKA_BLOCKS.eth_behined_block_topic;
+                    // rabbitMq.send_tx_to_queue(queue, Buffer.from(JSON.stringify(data)));
+                } catch (err) {
+                    console.error("Error while producing message for transaction", tx.hash, err);
+                }
+            });
+
+            // Wait for all the transaction processing to complete
+            await Promise.allSettled(transactionPromises);
+            // if (blockInfo) {
+            //     if (blockInfo.transactions) {
+            //         for await (let tx of blockInfo.transactions) {
+            //             console.log('tx.hash >>', tx.hash, 'blockId >>>', blockId);
+            //             let data: blocks_trnx = {
+            //                 block_number: blockId,
+            //                 tx_id: tx.hash ? tx.hash : '',
+            //                 value: tx.value ? tx.value : '',
+            //                 fromAddress: tx.from ? tx.from : '',
+            //                 toAddress: tx.to ? tx.to : '',
+            //                 retry_count: 0,
+            //                 key: null,
+            //                 pair: null
+            //             }
+            //             if (key == KEYS.latestBlock) {
+            //                 data.key = 'latest';
+            //                 // let queue_length: any = await rabbitMq.queue_length(config.TRANSACTIONS.eth_all_blocks)
+            //                 // console.log("queue_length>>>", queue_length)
+            //                 await kafkaHelper.produceMessage(this.eth_block_tx_topic, data);
+            //                 //rabbitMq.send_tx_to_queue(config.TRANSACTIONS.eth_all_blocks, Buffer.from(JSON.stringify(data)))
+            //             } else {
+            //                 data.key = 'behined & specific'
+            //                 await kafkaHelper.produceMessage(this.eth_behind_block_tx_topic, data);
+            //                 //rabbitMq.send_tx_to_queue(config.KAFKA_BLOCKS.eth_behined_block_topic, Buffer.from(JSON.stringify(data)))
+            //             }
+            //         }
+            //     } else {
+            //         console.log("no block info trnasactions")
+            //     }
+            // } else {
+            //     console.log("No blockinfo");
+            //     await EthOldBLockModel.create({ block_number: blockId, coin_family: config.STATIC_COIN_FAMILY.BNB, start_block: blockId, end_block: blockId, status: 0 })
+            // }
         } catch (err: any) {
             console.error("Error in getTxFromBlock:", (err as Error).message);
             await global_helper.save_error_logs('Eth_readBehindBlock', err.message)
@@ -127,36 +171,35 @@ class Eth_block_process {
         try {
             // REDIS BASED
             let data_exist: any = await ethProcessHelper.getKeyValuePair(config.BLOCKS, config.READ_BEHINED_BLOCK_ETH)
-            let data_exists = JSON.parse(data_exist)
-            if (data_exists) {
-                console.log("This block exist in redis read behined")
-                let id = data_exists.id
-                let end_block = data_exists.end_block
-                let start_block = data_exists.start_block
+            if (data_exist) {
+                let data_exists = JSON.parse(data_exist);
+                if (data_exists) {
+                    console.log("This block exist in redis read behined")
+                    let { id, start_block, end_block } = data_exists;
+                    if (end_block > start_block) {
+                        console.log("This block go for getTxFromBlock")
+                        await this.getTxFromBlock(start_block, KEYS.behinedBlock);
+                        start_block = start_block + 1;
+                        let add_data = {
+                            id: id,
+                            start_block: start_block,
+                            end_block: end_block,
+                            diff: end_block - start_block
+                        }
+                        await ethProcessHelper.setKeyValuePair(config.BLOCKS, config.READ_BEHINED_BLOCK_ETH, JSON.stringify(add_data))
+                    } else {
+                        console.log("id>>>>>>>>>>>", id)
+                        // await EthOldBLockModel.destroy({ where: { id: id } })
+                        await EthOldBLockModel.update({ status: 1 }, { where: { id: id } })
+                        await ethProcessHelper.deleteKeyValuePair(config.BLOCKS, config.READ_BEHINED_BLOCK_ETH)
 
-                if (end_block > start_block) {
-                    console.log("This block go for getTxFromBlock")
-                    await this.getTxFromBlock(start_block, KEYS.behinedBlock);
-                    start_block = start_block + 1;
-                    let add_data = {
-                        id: id,
-                        start_block: start_block,
-                        end_block: end_block,
-                        diff: end_block - start_block
+                        await ethProcessHelper.behindBlocks()
+
                     }
-                    let dataaaaa_exist: any = await ethProcessHelper.setKeyValuePair(config.BLOCKS, config.READ_BEHINED_BLOCK_ETH, JSON.stringify(add_data))
-                } else {
-                    console.log("id>>>>>>>>>>>", id)
-                    // await EthOldBLockModel.destroy({ where: { id: id } })
-                    await EthOldBLockModel.update({ status: 1 }, { where: { id: id } })
-                    await ethProcessHelper.deleteKeyValuePair(config.BLOCKS, config.READ_BEHINED_BLOCK_ETH)
-
-                    let behindBlocks: any = await ethProcessHelper.behindBlocks()
-
                 }
             } else {
                 // DB BASED
-                let behindBlocks: any = await ethProcessHelper.behindBlocks()
+                await ethProcessHelper.behindBlocks()
             }
 
             // REDIS BASED
