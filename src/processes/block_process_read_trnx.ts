@@ -89,7 +89,7 @@ class Eth_block_process {
                 console.log("No block info");
                 await EthOldBLockModel.create({
                     block_number: blockId,
-                    coin_family: config.STATIC_COIN_FAMILY.BNB,
+                    coin_family: config.STATIC_COIN_FAMILY.ETH,
                     start_block: blockId,
                     end_block: blockId,
                     status: 0
