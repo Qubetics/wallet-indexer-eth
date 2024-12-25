@@ -17,7 +17,7 @@ export const config = {
   KAFKA_CLIENT_ID: zookeeperConfig.config.KAFKA_CLIENT_ID,
   MIN_BLOCK_CONFORMATIONS: zookeeperConfig.config.MIN_BLOCK_CONFORMATIONS,
   TOKEN_TYPE_ETH: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.TOKEN_TYPE_ETH}`,
-  TOKEN_TYPE721_ETH: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.TOKEN_TYPE721_ETH}`,
+  ETH_NFT: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.TOKEN_TYPE_ETH_NFT}`,
   STATIC_COIN_FAMILY: zookeeperConfig.config.STATIC_COIN_FAMILY,
   // added new
   // KEYS: {

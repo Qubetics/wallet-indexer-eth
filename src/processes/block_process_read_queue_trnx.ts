@@ -7,6 +7,7 @@ import ethProcessHelper from "./process.helper";
 import { TxType } from "../types/ERC20Tokens.types";
 import { TrnxTypeEnum } from "../enum";
 import { global_helper } from "../helpers/global_helper";
+import { AbiItem } from "web3-utils";
 
 class queue_transactions {
     public approval: string | null;
@@ -106,9 +107,37 @@ class queue_transactions {
                 const gasInEth = await Blockchain_Helper.convertWeiToEth(
                     await Utility_Helper.bigNumberSafeMath(gasUsed, '*', txReceipt.effectiveGasPrice)
                 );
+                let nft_tokens_address: any = [];
                 for await (const log of txReceipt.logs) {
                     const isToken: any = await ethProcessHelper.checkIfContract(log.address);
-                    if (isToken !== null && log.topics[2] !== undefined) {
+                    const isNFTToken = await ethProcessHelper.checkIfOurNFTContract(log.address);
+                    if (
+                        Object.keys(isNFTToken)?.length > 0 &&
+                        log.topics[1] != undefined &&
+                        log.topics[2] != undefined
+                    ) {
+                        let transferData = await this.getTransferEventDetail(
+                            isNFTToken.token_address,
+                            log?.blockNumber
+                        );
+                        if (nft_tokens_address.indexOf(isNFTToken.token_address) == -1 && transferData?.length > 0) {
+                            nft_tokens_address.push(isNFTToken.token_address);
+                            const txData: TxType = {
+                                txId: transferData[0].transactionHash,
+                                fromAddress: transferData[0].returnValues.from,
+                                toAddress: transferData[0].returnValues.to,
+                                token: isNFTToken,
+                                amount: transferData[0].returnValues.tokenId,
+                                blockId: log?.blockNumber,
+                                isNFTToken: true,
+                                txType: null,
+                                trnx_fee: Number(gasInEth)
+                            };
+                            await this.checkAddressInDB(txData);
+                        } else {
+                            return "Not get transfer data.";
+                        }
+                    } else if (isToken !== null && log.topics[2] !== undefined) {
                         if (log?.topics && log?.topics[0] == this.approval) {
                             continue;
                         } else if (log?.topics && log?.topics[0] == this.transfer) {
@@ -210,6 +239,37 @@ class queue_transactions {
             console.error("Error in checkAddressInDB>>", err)
         }
     }
+    public getTransferEventDetail = async (
+        tokenAddress: string,
+        blockId: number
+    ) => {
+        try {
+            let contract = new Blockchain_Helper.Web3.eth.Contract(
+                config.ERC721ABI as AbiItem[],
+                tokenAddress
+            );
+            let events = await contract.getPastEvents(
+                "Transfer",
+                { fromBlock: blockId, toBlock: blockId },
+                function (error, events) {
+                    if (error) {
+                        console.log("🔥 ~ error", error);
+                        return [];
+                    } else {
+                        if (events) {
+                            return events;
+                        } else {
+                            return [];
+                        }
+                    }
+                }
+            );
+            return events;
+        } catch (error) {
+            console.log("🔥 ~ getTransferEventDetail error", (error as Error).message);
+            return [];
+        }
+    };
     public async addTxToQueue(data: TxType, queueName: string) {
         try {
             await kafkaHelper.produceMessage(queueName, data)

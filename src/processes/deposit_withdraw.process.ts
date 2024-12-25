@@ -3,7 +3,7 @@ import { CoinInterface, NotificationInterface, TrnxHistoryModel } from "../model
 // import rabbitMq from "../config/rabbitMq";
 import { config } from "../config/config";
 import ethProcessHelper from "./process.helper";
-import { BlockChainStatusEnum, CoinFamilyEnum, NotificationTypeEnum, TrnxTypeEnum, TxReqTypesEnum } from "../enum";
+import { BlockChainStatusEnum, CoinFamilyEnum, NotificationTypeEnum, TokenStandard, TrnxTypeEnum, TxReqTypesEnum } from "../enum";
 import { Utility_Helper, Wallet_Helper } from "../helpers"
 import { Op } from "sequelize";
 import { global_helper } from "../helpers/global_helper";
@@ -184,31 +184,20 @@ class EthDepositWithdrawProcess {
 
       if (Addressdeposit) {
         let trnxTypeD: string = "Deposit";
-        // switch (tx_type) {
-        //   case TrnxTypeEnum.SMARTCONTRACTINTERACTION:
-        //     trnxTypeD = "Smart Contract Interaction";
-        //     break;
-        //   case TrnxTypeEnum.APPROVE:
-        //     trnxTypeD = "Approval";
-        //     break;
-        //   case TrnxTypeEnum.SWAP:
-        //     trnxTypeD = "Swap";
-        //     break;
-        //   case TrnxTypeEnum.CROSS_CHAIN:
-        //     trnxTypeD = "Cross-chain Swap";
-        //     break;
-        //   default:
-        //     break;
-        // }
-        /** update to adrs wallet balance */
-        let balance: any = await Wallet_Helper.Update_Balance(
-          to_address, /// wallet_address,
-          coin /// coin
-        );
-        await global_helper.check_coin_in_wallet(to_address, coin, balance)
-        const notiMsg = `${trnxTypeD} of ${await Utility_Helper.bigNumberSafeConversion(
-          amount
-        )} ${coin?.coin_symbol?.toUpperCase()} has been confirmed.`;
+        if (coin?.token_type?.toLowerCase() !== TokenStandard.ERC721.toLowerCase() && coin?.token_type?.toLowerCase() !== TokenStandard.ERC1155.toLowerCase()) {
+          /** update to adrs wallet balance */
+          let balance: any = await Wallet_Helper.Update_Balance(
+            to_address, /// wallet_address,
+            coin /// coin
+          );
+          await global_helper.check_coin_in_wallet(to_address, coin, balance)
+        }
+
+        let notiMsg = coin?.token_type == TokenStandard.ERC721 ?
+          `Deposit of NFT(${coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` :
+          `${trnxTypeD} of ${await Utility_Helper.bigNumberSafeConversion(
+            amount
+          )} ${coin?.coin_symbol?.toUpperCase()} has been confirmed.`;
 
         let notifData: NotificationInterface = {
           title: trnxTypeD?.toUpperCase(),
@@ -248,11 +237,12 @@ class EthDepositWithdrawProcess {
           default:
             break;
         }
-
-        await Wallet_Helper.Update_Balance(
-          from_address, /// wallet_address,
-          coin /// coin
-        );
+        if (coin.token_type !== TokenStandard.ERC721 && coin.token_type !== TokenStandard.ERC1155) {
+          await Wallet_Helper.Update_Balance(
+            from_address, /// wallet_address,
+            coin /// coin
+          );
+        }
         if (coin.is_token) {
           const native_coin: any =
             await ethProcessHelper.NativeCoinByCoinFamily(coin.coin_family);
@@ -262,9 +252,11 @@ class EthDepositWithdrawProcess {
           );
         }
 
-        const notiMsg = `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(
-          amount
-        )} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
+        let notiMsg = coin?.token_type == TokenStandard.ERC721 ? `Withdraw request of NFT(${coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` : `Withdraw request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
+
+        // const notiMsg = `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(
+        //   amount
+        // )} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
 
         let notifData: NotificationInterface = {
           title: trnxTypeW?.toUpperCase(),

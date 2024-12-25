@@ -4,7 +4,7 @@ import { CoinInterface, CoinsModel, EthOldBLockModel, WalletInterface } from "..
 import redisClient from "../config/redis";
 import { promisify } from "util";
 import { config } from "../config/config";
-import { BooleanEnum, CoinFamilyEnum } from "../enum";
+import { BooleanEnum, CoinFamilyEnum, TokenStandard } from "../enum";
 import { global_helper } from "../helpers/global_helper";
 import { Blockchain_Helper } from "../helpers";
 import { Op } from "sequelize";
@@ -15,7 +15,7 @@ class EthProcessHelper {
 
   constructor() {
     this.fetchERC20Tokens();
-    // this.fetchERC721Tokens();
+    this.fetchERC721Tokens();
     this.fetchWalletAddress();
   }
   public async getKeyValuePair(keyName: string, field: string) {
@@ -158,7 +158,7 @@ class EthProcessHelper {
         where: {
           coin_status: 1,
           coin_family: config.STATIC_COIN_FAMILY.ETH,
-          [Op.or]: [{ token_type: { [Op.ne]: config.TOKEN_TYPE721_ETH } }, { token_type: null }]
+          [Op.or]: [{ token_type: TokenStandard.ERC20 }, { token_type: null }]
         },
         raw: true
       })
@@ -213,13 +213,20 @@ class EthProcessHelper {
 
   public fetchERC721Tokens = async () => {
     try {
-      const getTokenQuery = `SELECT * FROM coins WHERE coin_status=1 AND coin_family=${config.STATIC_COIN_FAMILY.ETH} AND (token_type!='${config.TOKEN_TYPE_ETH}' OR token_type is null)`;
+      const getTokenQuery = `SELECT * FROM coins WHERE coin_status=1 AND coin_family=${config.STATIC_COIN_FAMILY.ETH} AND (token_type!='${TokenStandard.ERC20}' OR token_type is null)`;
 
       const tokens: CoinInterface[] = await database.db_read.query(getTokenQuery, {
         type: Sequelize.QueryTypes.SELECT,
       });
-
-      redisClient.set(config.TOKEN_TYPE721_ETH, JSON.stringify(tokens));
+      if (tokens.length > 0) {
+        for await (let token of tokens) {
+          this.setKeyValuePair(
+            `${config.ETH_NFT}`,
+            token.token_address == null ? 'NativeCoin'.toUpperCase() : token.token_address.toUpperCase(),
+            JSON.stringify(token)
+          );
+        }
+      }
     } catch (error: any) {
       console.error('fetchERC721Tokens >>>>', error);
     }
@@ -227,18 +234,14 @@ class EthProcessHelper {
 
   public checkIfOurNFTContract = async (address: string) => {
     try {
-      const getAsync = promisify(redisClient.get).bind(redisClient);
-      const value = await getAsync(config.TOKEN_TYPE721_ETH);
-      const erc721Tokens: CoinInterface[] = value ? JSON.parse(value) : [];
-      const token = erc721Tokens.find(
-        (el: any) => Number(el.is_token) === Number(BooleanEnum.true) && el.token_address.toUpperCase() === address?.toUpperCase()
-      );
-
-      if (token) return token;
-      return null;
-    } catch (error: any) {
-      console.error('checkIfOurNFTContract >>>>>', error);
-      return null;
+      const token = await this.getKeyValuePair(`${config.ETH_NFT}`, address?.toLowerCase());
+      if (token) {
+        return JSON.parse(token);
+      } else {
+        return {}
+      }
+    } catch (error) {
+      console.error(`💥 ~ checkIfContract error`, error);
     }
   };
 
@@ -305,7 +308,7 @@ class EthProcessHelper {
           end_block: behindBlocks.end_block,
           diff: behindBlocks.end_block - behindBlocks.start_block
         }
-        let dataaaaa_exist: any = await this.setKeyValuePair(config.BLOCKS, config.READ_BEHINED_BLOCK_ETH, JSON.stringify(add_data))
+        await this.setKeyValuePair(config.BLOCKS, config.READ_BEHINED_BLOCK_ETH, JSON.stringify(add_data))
       } else {
         console.log("you have not any behind block yet")
       }

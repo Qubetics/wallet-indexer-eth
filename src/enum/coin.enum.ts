@@ -11,7 +11,8 @@ export enum CoinFamilyEnum {
 export enum TokenStandard {
     NONE = 'null',
     ERC20 = 'erc20',  // ethereum
-    ERC721 = 'erc721',  // ethereum
+    ERC721 = 'ERC721',
+    ERC1155 = 'ERC1155',
 
     BEP20 = 'bep20',  // binance
     BEP721 = 'erc721',  // binance
