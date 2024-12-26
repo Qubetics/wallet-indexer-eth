@@ -7,6 +7,7 @@ import ethProcessHelper from "./process.helper";
 import { Op } from "sequelize";
 import { global_helper } from "../helpers/global_helper";
 import kafkaHelper from "../config/kafka.helper";
+import { pending_trnx } from "../interfaces/global_helper";
 class EthTxStatusUpdateProcess {
   // public startTxStatusUpdateQueue = async () => {
   //   await rabbitMq.consumeQueue(
@@ -29,7 +30,7 @@ class EthTxStatusUpdateProcess {
     });
   };
 
-  public getTx = async (data: { tx_id: string; coin_id: number }) => {
+  public getTx = async (data: pending_trnx) => {
     console.log('Pending data >>>>>>>', data);
     const { getTransaction, getTransactionReceipt } = Blockchain_Helper.Web3.eth;
     try {
@@ -55,7 +56,12 @@ class EthTxStatusUpdateProcess {
 
         if (transactionReceipt.status && transaction.blockHash != null) {
           const txUpdate = {
-            coin_id: data.coin_id,
+            coin: {
+              coin_id: data.coin_id,
+              is_token: data.is_token,
+              token_type: data.token_type,
+              token_address: data.token_address,
+            },
             status: "success",
             txid: transaction.hash,
             gasReverted: gasReverted,
@@ -65,7 +71,12 @@ class EthTxStatusUpdateProcess {
           await this.sendTxUpdate(txUpdate);
         } else if (!transactionReceipt.status) {
           const txUpdate = {
-            coin_id: data.coin_id,
+            coin: {
+              coin_id: data.coin_id,
+              is_token: data.is_token,
+              token_type: data.token_type,
+              token_address: data.token_address,
+            },
             status: "failed",
             txid: transaction.hash,
             gasReverted: gasReverted,
@@ -81,7 +92,12 @@ class EthTxStatusUpdateProcess {
   };
 
   public sendTxUpdate = async (txData: {
-    coin_id: number;
+    coin: {
+      coin_id: number,
+      is_token: boolean,
+      token_type: string | null,
+      token_address: string
+    };
     status: string;
     txid: string;
     gasReverted: number | undefined;
@@ -89,26 +105,38 @@ class EthTxStatusUpdateProcess {
     tx_fee: number
   }) => {
     try {
-      let coin_data: any = await ethProcessHelper.CoinByCoinId(txData.coin_id);
-      const trx_data = {
-        coin_id: txData?.coin_id,
-        status: txData?.status,
-        txid: txData?.txid,
-        gas_reverted: txData?.gasReverted,
-        tx_fee: txData?.tx_fee,
-        fromAddress: txData?.fromAddress,
-        coin: {
-          coin_id: txData?.coin_id,
-          is_token: coin_data.is_token,
-          token_type: coin_data.token_type,
-          coin_symbol: coin_data.coin_symbol,
-          coin_family: coin_data.coin_family,
-          cmc_id: coin_data.cmc_id,
-          token_address: Number(coin_data.is_token) === Number(BooleanEnum.true) ? coin_data.token_address : coin_data.coin_symbol
-        }
-      };
-      console.log(trx_data, "withdrwal");
-      await this.updateBroadcastTx(trx_data);
+      let coin_data: any = {};
+      if (!txData.coin?.is_token) {
+        console.log('in case of coin');
+        coin_data = await ethProcessHelper.CoinByCoinId(txData.coin.coin_id);
+      } else if (txData.coin?.token_type == TokenStandard.ERC20) {
+        coin_data = await ethProcessHelper.CoinByCoinId(txData.coin.coin_id);
+      } else if (txData.coin?.token_type == TokenStandard.ERC1155 || txData.coin?.token_type == TokenStandard.ERC721) {
+        coin_data = await ethProcessHelper.checkIfOurNFTContract(txData.coin.token_address);
+      }
+      if (coin_data) {
+        const trx_data = {
+          coin_id: txData.coin?.coin_id,
+          status: txData?.status,
+          txid: txData?.txid,
+          gas_reverted: txData?.gasReverted,
+          tx_fee: txData?.tx_fee,
+          fromAddress: txData?.fromAddress,
+          coin: {
+            coin_id: txData.coin.coin_id,
+            is_token: coin_data.is_token,
+            token_type: coin_data.token_type,
+            coin_symbol: coin_data.coin_symbol,
+            coin_family: coin_data.coin_family,
+            cmc_id: coin_data.cmc_id,
+            token_address: Number(coin_data.is_token) === Number(BooleanEnum.true) ? coin_data.token_address : coin_data.coin_symbol
+          }
+        };
+        console.log(trx_data, "withdrwal");
+        await this.updateBroadcastTx(trx_data);
+      } else {
+        console.log('not coin present in redis or database');
+      }
 
 
     } catch (error: any) {
