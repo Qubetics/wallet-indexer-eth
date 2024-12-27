@@ -184,7 +184,8 @@ class EthDepositWithdrawProcess {
 
       if (Addressdeposit) {
         let trnxTypeD: string = "Deposit";
-        if (coin?.token_type?.toLowerCase() !== TokenStandard.ERC721.toLowerCase() && coin?.token_type?.toLowerCase() !== TokenStandard.ERC1155.toLowerCase()) {
+
+        if (coin?.token_type === null || coin?.token_type.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
           /** update to adrs wallet balance */
           let balance: any = await Wallet_Helper.Update_Balance(
             to_address, /// wallet_address,
@@ -237,7 +238,7 @@ class EthDepositWithdrawProcess {
           default:
             break;
         }
-        if (coin.token_type !== TokenStandard.ERC721 && coin.token_type !== TokenStandard.ERC1155) {
+        if (coin?.token_type === null || coin?.token_type.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
           await Wallet_Helper.Update_Balance(
             from_address, /// wallet_address,
             coin /// coin

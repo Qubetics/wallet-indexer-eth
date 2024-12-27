@@ -252,7 +252,7 @@ class EthTxStatusUpdateProcess {
             /** update to adrs wallet balance */
             if (to_address !== from_address) {
               if (tx_type !== TrnxTypeEnum.DAPP) {
-                if (trx_data.coin?.token_type.toLowerCase() !== TokenStandard.ERC1155.toLowerCase() && trx_data.coin?.token_type.toLowerCase() !== TokenStandard.ERC721.toLowerCase()) {
+                if (trx_data.coin?.token_type === null || trx_data.coin?.token_type.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
                   let balance: any = await Wallet_Helper.Update_Balance(
                     to_address, /// wallet_address,
                     trx_data?.coin /// coin
