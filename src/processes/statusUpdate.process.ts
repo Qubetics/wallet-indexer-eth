@@ -283,7 +283,7 @@ class EthTxStatusUpdateProcess {
               coin_id: trx_data?.coin?.coin_id,
               coin_family: trx_data?.coin?.coin_family,
               tx_type: NotificationTypeEnum.DEPOSIT,
-              notification_type: NotificationTypeEnum.DEPOSIT,
+              notification_type: 'Deposit',
               state: "confirmed"
             };
             Utility_Helper.SendNotification(notifData);

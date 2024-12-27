@@ -212,7 +212,7 @@ class EthDepositWithdrawProcess {
           coin_id: coin.coin_id,
           coin_family: coin.coin_family,
           tx_type: tx_type,
-          notification_type: NotificationTypeEnum.DEPOSIT,
+          notification_type: trnxTypeD,
           state: "confirmed"
         };
         Utility_Helper.SendNotification(notifData);
