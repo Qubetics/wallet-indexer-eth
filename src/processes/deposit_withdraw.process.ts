@@ -238,7 +238,7 @@ class EthDepositWithdrawProcess {
           default:
             break;
         }
-        if (coin?.token_type === null || coin?.token_type.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
+        if (coin?.token_type === null || coin?.token_type?.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
           await Wallet_Helper.Update_Balance(
             from_address, /// wallet_address,
             coin /// coin
