@@ -13,7 +13,8 @@ class Global_helper {
                 where: {
                     wallet_address: wallet_address,
                     coin_id: coin.coin_id,
-                }
+                },
+                raw: true
             })
             if (!wallet_data) {
                 wallet_data = await ethProcessHelper.check_our_wallet_address(wallet_address)
