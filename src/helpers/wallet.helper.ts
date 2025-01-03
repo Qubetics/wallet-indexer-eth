@@ -1,10 +1,8 @@
 import { config } from "../config";
 import kafkaHelper from "../config/kafka.helper";
-// import rabbitMq from "../config/rabbitMq";
 import { CoinFamilyEnum } from "../enum";
 import { CoinInterface, CoinsModel } from "../models";
 import WalletModel from "../models/tables/model.wallets";
-// import ethProcessHelper from "../processes/process.helper";
 import { Blockchain_Helper } from "./blockchain.helper";
 import { Utility_Helper } from "./utility.helper";
 // import utxo from "./utxo";
@@ -23,19 +21,6 @@ class WalletHelper {
                     case CoinFamilyEnum.ETH:
                         balance = await Blockchain_Helper.Fetch_Balance(address, coin);
                         break;
-                    // case CoinFamilyEnum.BNB:
-                    //     balance = await Blockchain_Helper.Fetch_Balance_bnb(address, coin);
-                    //     break;
-                    // case CoinFamilyEnum.BTC:
-                    //     balance = Number(await utxo.getUserBtcBalance(address));
-                    //     break;
-                    // case CoinFamilyEnum.LTC:
-                    //     balance = Number(await utxo.getUserLtcBalance(address));
-                    //     break;
-                    // case CoinFamilyEnum.TRON:
-                    //     balance = Number(await Blockchain_Helper.TRX_Fetch_Balance(address, coin))
-                    //     break;
-
                     default:
                         balance = 0;
                         break;
