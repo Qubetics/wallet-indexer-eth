@@ -35,7 +35,7 @@ class BlockchainHelper {
         try {
             let balance: number = 0;
             if (coin.is_token == BooleanEnum.true) {
-                switch (coin.token_type.toLowerCase()) {
+                switch (coin.token_type) {
 
                     case TokenStandard.ERC20:
                         balance = await this.ERC20_Token_Fetch_Balance(

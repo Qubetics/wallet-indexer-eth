@@ -10,7 +10,7 @@ export enum CoinFamilyEnum {
 
 export enum TokenStandard {
     NONE = 'null',
-    ERC20 = 'erc20',  // ethereum
+    ERC20 = 'ERC20',  // ethereum
     ERC721 = 'ERC721',
     ERC1155 = 'ERC1155',
 
