@@ -253,7 +253,7 @@ class EthDepositWithdrawProcess {
           );
         }
 
-        let notiMsg = coin?.token_type == TokenStandard.ERC721 ? `Withdraw request of NFT(${coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` : `Withdraw request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
+        let notiMsg = coin?.token_type == TokenStandard.ERC721 ? `${trnxTypeW} request of NFT(${coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
 
         // const notiMsg = `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(
         //   amount

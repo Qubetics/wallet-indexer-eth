@@ -208,7 +208,7 @@ class EthTxStatusUpdateProcess {
                 break;
             }
             let notiMsg = trx_data.coin?.token_type == TokenStandard.ERC721 ?
-              `Withdraw request of NFT(${coin_symbol.toUpperCase()} ) with token id ${amount} has been confirmed.` : `Withdraw request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin_symbol.toUpperCase()} has been confirmed.`;
+              `${trnxTypeW} request of NFT(${coin_symbol.toUpperCase()} ) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin_symbol.toUpperCase()} has been confirmed.`;
             // const notiMsg = `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(
             //   amount
             // )} ${coin_symbol.toUpperCase()} has been confirmed.`;
@@ -312,7 +312,7 @@ class EthTxStatusUpdateProcess {
           }
 
           let notiMsg = trx_data?.coin?.token_type == TokenStandard.ERC721 ?
-            `Withdraw of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been failed.` : `Withdraw of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been failed.`;
+            `${trnxTypeW} of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been failed.` : `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been failed.`;
 
           // let notiMsg = trx_data?.coin.token_type === "ERC721" ? `Withdraw of NFT(${trx_data?.coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol.toUpperCase()} has been failed.`;
           let notifData: NotificationInterface = {
