@@ -2,12 +2,11 @@ import { config } from "../config/config";
 import kafkaHelper from "../config/kafka.helper";
 import { Blockchain_Helper, Utility_Helper } from "../helpers";
 import { blocks_trnx } from "../interfaces/global_helper";
-import { TransactionReceipt } from "web3-core";
 import ethProcessHelper from "./process.helper";
 import { TxType } from "../types/ERC20Tokens.types";
 import { TrnxTypeEnum } from "../enum";
 import { global_helper } from "../helpers/global_helper";
-import { AbiItem } from "web3-utils";
+import { ethers } from "ethers";
 
 class queue_transactions {
     public approval: string | null;
@@ -21,9 +20,9 @@ class queue_transactions {
     public deposit_withdraw_topic = config.KAFKA_TRANSACTIONS.DEPOSIT_WITHDRAW_TOPIC;
 
     constructor() {
-        this.approval = Blockchain_Helper.Web3.utils.sha3('Approval(address,address,uint256)');
-        this.swap = Blockchain_Helper.Web3.utils.sha3('Swap(address,uint256,uint256,uint256,uint256,address)');
-        this.transfer = Blockchain_Helper.Web3.utils.sha3('Transfer(address,address,uint256)');
+        this.approval = ethers.id('Approval(address,address,uint256)');
+        this.swap = ethers.id('Swap(address,uint256,uint256,uint256,uint256,address)');
+        this.transfer = ethers.id('Transfer(address,address,uint256)');
 
     }
 
@@ -76,8 +75,7 @@ class queue_transactions {
     public async read_trnx(data: blocks_trnx) {
         try {
             // console.log("consume started>>>", data)
-            const { getTransactionReceipt } = Blockchain_Helper.Web3.eth;
-            const txReceipt = await getTransactionReceipt(data.tx_id);
+            const txReceipt = await Blockchain_Helper.provider.getTransactionReceipt(data.tx_id);
             if (txReceipt == null) {
                 if (Number(data.retry_count) < 6) {
                     data.retry_count = Number(data.retry_count) + 1;
@@ -86,7 +84,7 @@ class queue_transactions {
                 }
             }
 
-            if (txReceipt?.status === false && txReceipt !== null) {
+            if (txReceipt?.status == 0 && txReceipt !== null) {
                 console.log("(txReceipt.status === false && txReceipt !== null")
             } else {
                 await eth_tx_status_deposit_withdraw.buildTx(txReceipt, data)
@@ -100,12 +98,13 @@ class queue_transactions {
             }
         }
     }
-    public async buildTx(txReceipt: TransactionReceipt, data: blocks_trnx) {
+    public async buildTx(txReceipt: any, data: blocks_trnx) {
         try {
             if (txReceipt.status == true && txReceipt.logs.length > 0) {
                 const gasUsed = txReceipt.gasUsed ? txReceipt.gasUsed : 0;
+                const effectiveGasPrice: number = txReceipt?.effectiveGasPrice ? txReceipt?.effectiveGasPrice : 0;
                 const gasInEth = await Blockchain_Helper.convertWeiToEth(
-                    await Utility_Helper.bigNumberSafeMath(gasUsed, '*', txReceipt.effectiveGasPrice)
+                    await Utility_Helper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice)
                 );
                 let nft_tokens_address: any = [];
                 for await (const log of txReceipt.logs) {
@@ -116,18 +115,24 @@ class queue_transactions {
                         log.topics[1] != undefined &&
                         log.topics[2] != undefined
                     ) {
-                        let transferData = await this.getTransferEventDetail(
+                        let transferData: any = await this.getTransferEventDetail(
                             isNFTToken.token_address,
                             log?.blockNumber
                         );
                         if (nft_tokens_address.indexOf(isNFTToken.token_address) == -1 && transferData?.length > 0) {
                             nft_tokens_address.push(isNFTToken.token_address);
+                            const fromAddress = transferData[0]?.args[0];
+                            const toAddress = transferData[0]?.args[1];
+                            const tokenId = ethers.toNumber(transferData[0]?.args[2]);
                             const txData: TxType = {
                                 txId: transferData[0].transactionHash,
-                                fromAddress: transferData[0].returnValues.from,
-                                toAddress: transferData[0].returnValues.to,
+                                // fromAddress: transferData[0].returnValues.from,
+                                // toAddress: transferData[0].returnValues.to,
+                                fromAddress: fromAddress,
+                                toAddress: toAddress,
                                 token: isNFTToken,
-                                amount: transferData[0].returnValues.tokenId,
+                                // amount: transferData[0].returnValues.tokenId,
+                                amount: tokenId,
                                 blockId: log?.blockNumber,
                                 isNFTToken: true,
                                 txType: null,
@@ -179,9 +184,10 @@ class queue_transactions {
     public async check_eth_deposit(data: blocks_trnx, txReceipt: any) {
         try {
             const gasUsed = txReceipt.gasUsed ? txReceipt.gasUsed : 0;
+            const effectiveGasPrice: number = txReceipt?.effectiveGasPrice ? txReceipt?.effectiveGasPrice : 0;
             const gasInEth = await Blockchain_Helper.convertWeiToEth(
                 await Utility_Helper.bigNumberSafeMath(
-                    gasUsed, '*', txReceipt.effectiveGasPrice
+                    gasUsed, '*', effectiveGasPrice
                 )
             );
             // const { getTransaction } = Blockchain_Helper.Web3.eth;
@@ -194,7 +200,8 @@ class queue_transactions {
                 data.toAddress &&
                 data.block_number
             ) {
-                let amount = parseFloat(Blockchain_Helper.Web3.utils.fromWei(data.value, 'ether'));
+                const ethValue = await Blockchain_Helper.convertWeiToEth((data.value ? data.value : 0));
+                const amount = parseFloat(ethValue.toString());
                 const txData: TxType = {
                     txId: data.tx_id,
                     fromAddress: data.fromAddress.toLowerCase(),
@@ -244,26 +251,19 @@ class queue_transactions {
         blockId: number
     ) => {
         try {
-            let contract = new Blockchain_Helper.Web3.eth.Contract(
-                config.ERC721ABI as AbiItem[],
-                tokenAddress
+            const contract = new ethers.Contract(
+                tokenAddress,
+                config.ERC721ABI,   
+                Blockchain_Helper.provider
             );
-            let events = await contract.getPastEvents(
-                "Transfer",
-                { fromBlock: blockId, toBlock: blockId },
-                function (error, events) {
-                    if (error) {
-                        console.log("🔥 ~ error", error);
-                        return [];
-                    } else {
-                        if (events) {
-                            return events;
-                        } else {
-                            return [];
-                        }
-                    }
-                }
+            
+            const filter = contract.filters.Transfer();
+            const events = await contract.queryFilter(
+                filter,
+                blockId,
+                blockId
             );
+            
             return events;
         } catch (error) {
             console.log("🔥 ~ getTransferEventDetail error", (error as Error).message);
