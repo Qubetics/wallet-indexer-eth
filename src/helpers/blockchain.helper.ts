@@ -77,7 +77,8 @@ class BlockchainHelper {
                   "/",
                   Math.pow(10, decimals)
                 );
-                return Number(tokenBalance);
+                const tokBalance: string = await Utility_Helper.exponentialToDecimal(tokenBalance)
+                return Number(tokBalance);
               }
               return 0;
         } catch (error) {
@@ -121,8 +122,9 @@ class BlockchainHelper {
                 "/",
                 Math.pow(10, 18)
             );
+            const coinBalance: string = await Utility_Helper.exponentialToDecimal(tokenBalance)
+            return Number(coinBalance || 0);
             
-            return Number(tokenBalance || 0);
         } catch (error: any) {
             console.error(`Eth_Helper Coin_Fetch_Balance error >>`, error);
             //return 0;
