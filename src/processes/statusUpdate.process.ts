@@ -8,7 +8,7 @@ import { Op } from "sequelize";
 import { global_helper } from "../helpers/global_helper";
 import kafkaHelper from "../config/kafka.helper";
 import { pending_trnx } from "../interfaces/global_helper";
-import { ethers } from "ethers";
+import { ethers, TransactionResponse } from "ethers";
 class EthTxStatusUpdateProcess {
   // public startTxStatusUpdateQueue = async () => {
   //   await rabbitMq.consumeQueue(
@@ -34,59 +34,59 @@ class EthTxStatusUpdateProcess {
   public getTx = async (data: pending_trnx) => {
     console.log('Pending data >>>>>>>', data);
     try {
-        // Initialize provider
-        const provider = Blockchain_Helper.provider;
-        
-        const transaction = await provider.getTransaction(data.tx_id);
-        if (transaction && transaction.blockNumber) {
-          const transactionReceipt = await provider.getTransactionReceipt(data.tx_id);
+      // Initialize provider
+      const provider = Blockchain_Helper.provider;
 
-          let gasReverted: number | undefined;
-          const gasUsed = transactionReceipt?.gasUsed || BigInt(0);
-            const gasPrice = transaction.gasPrice || BigInt(0);
-            const gasTotal = transaction.gasLimit || BigInt(0);
-            
-            // Calculate gas in ETH (using ethers v6 formatting utils)
-            const gasInEth: number = Number(
-                ethers.formatEther(gasUsed * gasPrice)
-            );
-            
-            if (gasTotal > BigInt(0) && gasUsed > BigInt(0)) {
-                const gasDiff = gasTotal - gasUsed;
-                gasReverted = Number(ethers.formatEther(gasPrice * gasDiff));
-            }
+      const transaction: TransactionResponse | null = await provider.getTransaction(data.tx_id);
+      if (transaction && transaction.blockNumber) {
+        const transactionReceipt = await provider.getTransactionReceipt(data.tx_id);
 
-            if (transactionReceipt?.status && transaction.blockHash != null) {
-              const txUpdate = {
-                  coin: {
-                      coin_id: data.coin_id,
-                      is_token: data.is_token,
-                      token_type: data.token_type,
-                      token_address: data.token_address,
-                  },
-                  status: "success",
-                  txid: transaction.hash,
-                  gasReverted: gasReverted !== undefined ? gasReverted : undefined,
-                  fromAddress: transactionReceipt.from.toLowerCase(),
-                  tx_fee: gasInEth
-              };
-              await this.sendTxUpdate(txUpdate);
-          } else if (transactionReceipt && transactionReceipt.status === 0) {
-              const txUpdate = {
-                  coin: {
-                      coin_id: data.coin_id,
-                      is_token: data.is_token,
-                      token_type: data.token_type,
-                      token_address: data.token_address,
-                  },
-                  status: "failed",
-                  txid: transaction.hash,
-                  gasReverted: gasReverted !== undefined ? gasReverted : undefined,
-                  fromAddress: transactionReceipt.from.toLowerCase(),
-                  tx_fee: gasInEth
-              };
-              await this.sendTxUpdate(txUpdate);
-          }
+        let gasReverted: number | undefined;
+        const gasUsed = transactionReceipt?.gasUsed || BigInt(0);
+        const gasPrice = transaction.gasPrice || BigInt(0);
+        const gasTotal = transaction.gasLimit || BigInt(0);
+
+        // Calculate gas in ETH (using ethers v6 formatting utils)
+        const gasInEth: number = Number(
+          ethers.formatEther(gasUsed * gasPrice)
+        );
+
+        if (gasTotal > BigInt(0) && gasUsed > BigInt(0)) {
+          const gasDiff = gasTotal - gasUsed;
+          gasReverted = Number(ethers.formatEther(gasPrice * gasDiff));
+        }
+
+        if (transactionReceipt?.status && transaction.blockHash != null) {
+          const txUpdate = {
+            coin: {
+              coin_id: data.coin_id,
+              is_token: data.is_token,
+              token_type: data.token_type,
+              token_address: data.token_address,
+            },
+            status: "success",
+            txid: transaction.hash,
+            gasReverted: gasReverted !== undefined ? gasReverted : undefined,
+            fromAddress: transactionReceipt.from.toLowerCase(),
+            tx_fee: gasInEth
+          };
+          await this.sendTxUpdate(txUpdate);
+        } else if (transactionReceipt && transactionReceipt.status === 0) {
+          const txUpdate = {
+            coin: {
+              coin_id: data.coin_id,
+              is_token: data.is_token,
+              token_type: data.token_type,
+              token_address: data.token_address,
+            },
+            status: "failed",
+            txid: transaction.hash,
+            gasReverted: gasReverted !== undefined ? gasReverted : undefined,
+            fromAddress: transactionReceipt.from.toLowerCase(),
+            tx_fee: gasInEth
+          };
+          await this.sendTxUpdate(txUpdate);
+        }
       }
     } catch (error: any) {
       console.error('getTx >>>>>', error.message);
