@@ -104,12 +104,12 @@ class queue_transactions {
             if (txReceipt.status == 0 && txReceipt.logs.length > 0) {
                 const gasUsed = txReceipt.gasUsed ? Number(txReceipt.gasUsed) : 0;
                 const hexToNumberGasPrice: any = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
-                const gasPrice = Number(ethers.formatUnits(hexToNumberGasPrice.toString(), 9));
+                const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
+
+                //const gasPrice = Number(ethers.formatUnits(hexToNumberGasPrice.toString(), 9));
 
                 // const effectiveGasPrice: number = txReceipt?.effectiveGasPrice ? txReceipt?.effectiveGasPrice : 0;
-                const gasInEth = await Blockchain_Helper.convertWeiToEth(
-                    await Utility_Helper.bigNumberSafeMath(gasUsed, '*', gasPrice)
-                );
+                const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
                 let nft_tokens_address: any = [];
                 for await (const log of txReceipt.logs) {
                     const isToken: any = await ethProcessHelper.checkIfContract(log.address);
@@ -200,17 +200,14 @@ class queue_transactions {
             ) {
                 const gasUsed = txReceipt.gasUsed ? txReceipt.gasUsed : 0;
                 const effectiveGasPrice: number = Number(txReceipt.gasPrice) || 0;
-                const gasPrice = Number(ethers.formatUnits(effectiveGasPrice.toString(), 9));
+                //const gasPrice = Number(ethers.formatUnits(effectiveGasPrice.toString(), 9));
                 //const effectiveGasPrice: number = txReceipt?.effectiveGasPrice ? txReceipt?.effectiveGasPrice : 0;
-                const gasInEth = await Blockchain_Helper.convertWeiToEth(
-                    await Utility_Helper.bigNumberSafeMath(
-                        gasUsed, '*', gasPrice
-                    )
-                );
+                const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice);
+                const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
 
                 const ethValue = await Blockchain_Helper.convertWeiToEth((data.value ? data.value : 0));
                 const amount = parseFloat(ethValue.toString());
-                
+
                 const txData: TxType = {
                     txId: data.tx_id,
                     fromAddress: data.fromAddress.toLowerCase(),

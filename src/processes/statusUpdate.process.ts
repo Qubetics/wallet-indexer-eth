@@ -45,18 +45,21 @@ class EthTxStatusUpdateProcess {
         const gasUsed = transactionReceipt?.gasUsed || BigInt(0);
         const gasPrice = transaction.gasPrice || BigInt(0);
         const gasTotal = transaction.gasLimit || BigInt(0);
-
+        const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', gasPrice);
         // Calculate gas in ETH (using ethers v6 formatting utils)
         const gasInEth: number = Number(
-          ethers.formatEther(gasUsed * gasPrice)
+          ethers.formatEther(txFee)
         );
 
         if (gasTotal > BigInt(0) && gasUsed > BigInt(0)) {
-          const gasDiff = gasTotal - gasUsed;
-          gasReverted = Number(ethers.formatEther(gasPrice * gasDiff));
+          // const gasDiff = gasTotal - gasUsed;
+          const gasDiff = await Utility_Helper.bigNumberSafeMath(gasTotal, '-', gasUsed);
+
+          const reverted = await Utility_Helper.bigNumberSafeMath(gasPrice, '*', gasDiff);
+          gasReverted = Number(ethers.formatEther(reverted));
         }
 
-        if (transactionReceipt?.status && transaction.blockHash != null) {
+        if (transactionReceipt && transactionReceipt?.status && transaction.blockHash != null) {
           const txUpdate = {
             coin: {
               coin_id: data.coin_id,
