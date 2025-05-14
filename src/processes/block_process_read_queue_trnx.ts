@@ -169,8 +169,7 @@ class queue_transactions {
                                     trnx_fee: Number(gasInEth)
                                 };
                                 await this.checkAddressInDB(txData);
-                            }
-                            if (isToken == null) {
+                            } else if (isToken == null) {
                                 await eth_tx_status_deposit_withdraw.check_eth_deposit(data, txReceipt)
                             }
                         }
