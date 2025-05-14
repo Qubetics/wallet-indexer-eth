@@ -32,8 +32,6 @@ class queue_transactions {
 
         await consumer.run({
             eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-                // console.log("🚀 ~ startBlockTxQueue topic", topic);
-                // console.log("🚀 ~ startBlockTxQueue message.value", message.value.toString());
                 this.read_trnx(JSON.parse(message.value.toString()))
             }
         }).catch((err: Error) => {
@@ -47,41 +45,18 @@ class queue_transactions {
 
         await consumer.run({
             eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-                // console.log("🚀 ~ startBehindBlockTxQueue topic", topic);
-                // console.log("🚀 ~ startBehindBlockTxQueue message.value", message.value.toString());
                 this.read_trnx(JSON.parse(message.value.toString()))
             }
         }).catch((err: Error) => {
             console.log("🔥 ~ startBehindBlockTxQueue consumer error", err);
         });
     };
-    // public async consume_queue_trnx() {
-    //     // Latest transactions
-    //     rabbitMq.only_assert_queue(config.TRANSACTIONS.eth_block_topic);
-    //     console.error(`RABBITMQ_BLOCK_ALL_TRNX_PROCESS >>>`, config.TRANSACTIONS.eth_all_blocks);
-    //     //rabbitMq.only_consume_queue(config.TRANSACTIONS.eth_all_blocks, this.read_trnx);
-
-    //     for (let i = 1; i <= Number(config.TRANSACTIONS.eth_transaction_consumer_count); i++) {
-    //         rabbitMq.only_consume_queue(config.TRANSACTIONS.eth_all_blocks, this.read_trnx);
-    //         // RabbitMq.consumeQueue(this.RABBITMQ_BLOCK_ALL_TRNX_PROCESS, this.GetTxDetail);
-    //     }
-    //     //==========================================================
-    //     // Behined transactions
-    //     rabbitMq.only_assert_queue(config.TRANSACTIONS.eth_behined_transactions);
-    //     console.error(`RABBITMQ_BLOCK_ALL_TRNX_PROCESS >>>`, config.TRANSACTIONS.eth_behined_transactions);
-    //     rabbitMq.only_consume_queue(config.TRANSACTIONS.eth_behined_transactions, this.read_trnx);
-    //     //==========================================================
-    // }
     public async read_trnx(data: blocks_trnx) {
         try {
-            // console.log("consume started>>>", data)
             const txReceipt: TransactionReceipt | null = await Blockchain_Helper.provider.getTransactionReceipt(data.tx_id);
             if (txReceipt == null && Number(data.retry_count) < 6) {
-                // if (Number(data.retry_count) < 6) {
                 data.retry_count = Number(data.retry_count) + 1;
-                // rabbitMq.send_tx_to_queue(config.TRANSACTIONS.bsc_behined_transactions, Buffer.from(JSON.stringify(data)))
                 await kafkaHelper.produceMessage(this.eth_behind_block_tx_topic, data)
-                // }
                 return false;
             }
 
@@ -106,9 +81,6 @@ class queue_transactions {
                 const hexToNumberGasPrice: any = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
                 const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
 
-                //const gasPrice = Number(ethers.formatUnits(hexToNumberGasPrice.toString(), 9));
-
-                // const effectiveGasPrice: number = txReceipt?.effectiveGasPrice ? txReceipt?.effectiveGasPrice : 0;
                 const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
                 let nft_tokens_address: any = [];
                 for await (const log of txReceipt.logs) {
@@ -129,12 +101,9 @@ class queue_transactions {
                             const tokenId = ethers.toNumber(transferData[0]?.args[2]);
                             const txData: TxType = {
                                 txId: transferData[0].transactionHash,
-                                // fromAddress: transferData[0].returnValues.from,
-                                // toAddress: transferData[0].returnValues.to,
                                 fromAddress: fromAddress,
                                 toAddress: toAddress,
                                 token: isNFTToken,
-                                // amount: transferData[0].returnValues.tokenId,
                                 amount: tokenId,
                                 blockId: log?.blockNumber,
                                 isNFTToken: true,
@@ -189,21 +158,14 @@ class queue_transactions {
     };
     public async check_eth_deposit(data: blocks_trnx, txReceipt: TransactionReceipt) {
         try {
-
-            // const { getTransaction } = Blockchain_Helper.Web3.eth;
-            // const transaction = await getTransaction(txId);
-
             /** for check the eth deposit */
             if (
-                // txReceipt?.status == 0,
                 data.value !== '0' &&
                 data.toAddress &&
                 data.block_number
             ) {
                 const gasUsed = txReceipt.gasUsed ? txReceipt.gasUsed : 0;
                 const effectiveGasPrice: number = Number(txReceipt.gasPrice) || 0;
-                //const gasPrice = Number(ethers.formatUnits(effectiveGasPrice.toString(), 9));
-                //const effectiveGasPrice: number = txReceipt?.effectiveGasPrice ? txReceipt?.effectiveGasPrice : 0;
                 const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice);
                 const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
 
@@ -281,9 +243,6 @@ class queue_transactions {
     public async addTxToQueue(data: TxType, queueName: string) {
         try {
             await kafkaHelper.produceMessage(queueName, data)
-            //rabbitMq.send_tx_to_queue(queueName, Buffer.from(JSON.stringify(data)))
-            // await rabbitMq.assertQueue(queueName);
-            // await rabbitMq.sendToQueue(queueName, Buffer.from(JSON.stringify(data)));
         } catch (err: any) {
             console.error("addTxToQueue", (err as Error).message);
             await global_helper.save_error_logs('ETH_checkAddressInDB', err.message)
