@@ -80,14 +80,6 @@ let dataObj = {
         type: DataTypes.INTEGER,
         allowNull: true
     },
-    // block_hash: {
-    //     type: DataTypes.STRING,
-    //     allowNull: true
-    // },
-    // speedup: {
-    //     type: DataTypes.ENUM('slow', 'average', 'fast'),
-    //     allowNull: true
-    // },
     nonce: {
         type: DataTypes.INTEGER,
         allowNull: true
@@ -100,10 +92,6 @@ let dataObj = {
         type: DataTypes.DOUBLE,
         allowNull: true
     },
-    // amount_in_fiat: {
-    //     type: DataTypes.STRING,
-    //     allowNull: true
-    // },
     gas_limit: {
         type: DataTypes.INTEGER,
         allowNull: true
@@ -124,10 +112,6 @@ let dataObj = {
         type: DataTypes.STRING(191),
         allowNull: true
     },
-    // country_code: {
-    //     type: DataTypes.STRING(191),
-    //     allowNull: true
-    // },
 };
 
 let dataObjIndex = {
