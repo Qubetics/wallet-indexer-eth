@@ -101,7 +101,7 @@ class queue_transactions {
     }
     public async buildTx(txReceipt: TransactionReceipt, data: blocks_trnx) {
         try {
-            if (txReceipt.status == 0 && txReceipt.logs.length > 0) {
+            if (txReceipt.status !== 0 && txReceipt.logs.length > 0) {
                 const gasUsed = txReceipt.gasUsed ? Number(txReceipt.gasUsed) : 0;
                 const hexToNumberGasPrice: any = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
                 const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
