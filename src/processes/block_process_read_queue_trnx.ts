@@ -84,68 +84,65 @@ class queue_transactions {
                 const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
                 let nft_tokens_address: any = [];
                 for await (const log of txReceipt.logs) {
-                    const isNFTToken = await ethProcessHelper.checkIfOurNFTContract(log.address);
-                    if (
-                        Object.keys(isNFTToken)?.length > 0 &&
-                        log.topics[1] != undefined &&
-                        log.topics[2] != undefined
-                    ) {
-                        let transferData: any = await this.getTransferEventDetail(
-                            isNFTToken.token_address,
-                            log?.blockNumber
-                        );
-                        if (nft_tokens_address.indexOf(isNFTToken.token_address) == -1 && transferData?.length > 0) {
-                            nft_tokens_address.push(isNFTToken.token_address);
-                            const fromAddress = transferData[0]?.args[0];
-                            const toAddress = transferData[0]?.args[1];
-                            const tokenId = ethers.toNumber(transferData[0]?.args[2]);
+                    const isToken: any = await ethProcessHelper.checkIfContract(log.address);
+                    if (isToken && log?.topics && log?.topics[2] !== undefined && log?.topics[0] !== undefined) {
+                        if (log.topics[0] == this.approval) {
+                            continue;
+                        } else if (log.topics[0] == this.transfer) {
+                            const decimalPrecision = isToken.decimals.toString().length - 1;
+                            let finalAmount = await Utility_Helper.bigNumberSafeMath(log.data, '/', Math.pow(10, decimalPrecision))
+                            finalAmount = await Utility_Helper.exponentialToDecimal(finalAmount)
+                            let toAddress: string = '0x' + log.topics[2].substring(26, log.topics[2].length);
+                            /* in case of swap trnx */
+                            let fromAddress: string = '0x' + log.topics[1].substring(26, log.topics[1].length);
                             const txData: TxType = {
-                                txId: transferData[0].transactionHash,
+                                txId: log.transactionHash,
                                 fromAddress: fromAddress,
                                 toAddress: toAddress,
-                                token: isNFTToken,
-                                amount: tokenId,
-                                blockId: log?.blockNumber,
-                                isNFTToken: true,
+                                token: isToken,
+                                amount: finalAmount,
+                                blockId: log.blockNumber,
+                                isNFTToken: false,
                                 txType: null,
                                 trnx_fee: Number(gasInEth)
                             };
                             await this.checkAddressInDB(txData);
-                        } else {
-                            return "Not get transfer data.";
+
                         }
-                    } else if (log?.topics && log.topics[2] !== undefined && log?.topics[0] !== undefined) {
-                        if (log.topics[0] == this.approval) {
-                            continue;
-                        } else if (log.topics[0] == this.transfer) {
-                            const isToken: any = await ethProcessHelper.checkIfContract(log.address);
-                            if (isToken) {
-                                const decimalPrecision = isToken.decimals.toString().length - 1;
-                                let finalAmount = await Utility_Helper.bigNumberSafeMath(log.data, '/', Math.pow(10, decimalPrecision))
-                                finalAmount = await Utility_Helper.exponentialToDecimal(finalAmount)
-                                let toAddress: string = '0x' + log.topics[2].substring(26, log.topics[2].length);
-                                /* in case of swap trnx */
-                                let fromAddress: string = '0x' + log.topics[1].substring(26, log.topics[1].length);
+                    } else {
+                        const isNFTToken = await ethProcessHelper.checkIfOurNFTContract(log.address);
+                        if (Object.keys(isNFTToken)?.length > 0 && log.topics[1] != undefined && log.topics[2] != undefined) {
+                            const transferData: any = await this.getTransferEventDetail(
+                                isNFTToken.token_address,
+                                log?.blockNumber
+                            );
+                            if (nft_tokens_address.indexOf(isNFTToken.token_address) == -1 && transferData?.length > 0) {
+                                nft_tokens_address.push(isNFTToken.token_address);
+                                const fromAddress = transferData[0]?.args[0];
+                                const toAddress = transferData[0]?.args[1];
+                                const tokenId = ethers.toNumber(transferData[0]?.args[2]);
                                 const txData: TxType = {
-                                    txId: log.transactionHash,
+                                    txId: transferData[0].transactionHash,
                                     fromAddress: fromAddress,
                                     toAddress: toAddress,
-                                    token: isToken,
-                                    amount: finalAmount,
-                                    blockId: log.blockNumber,
-                                    isNFTToken: false,
+                                    token: isNFTToken,
+                                    amount: tokenId,
+                                    blockId: log?.blockNumber,
+                                    isNFTToken: true,
                                     txType: null,
                                     trnx_fee: Number(gasInEth)
                                 };
                                 await this.checkAddressInDB(txData);
-                            } else if (isToken == null) {
-                                await eth_tx_status_deposit_withdraw.check_eth_deposit(data, txReceipt)
+                            } else {
+                                return "Not get transfer data.";
                             }
                         }
                     }
                     /** swap transaction then also check eth */
                     if (log?.topics && log?.topics[0] == this.swap) {
                         await eth_tx_status_deposit_withdraw.check_eth_deposit(data, txReceipt);
+                    } else if (isToken == null && log?.topics[2] !== undefined && log?.topics[0] == this.transfer) {
+                        await eth_tx_status_deposit_withdraw.check_eth_deposit(data, txReceipt)
                     }
                 }
             } else {
