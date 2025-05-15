@@ -50,7 +50,7 @@ class EthDepositWithdrawProcess {
       } else if (data.isNFTToken) {
         coin_data = data.isNFTToken;
       } else {
-        coin_data = await ethProcessHelper.NativeCoinByCoinFamily(CoinFamilyEnum.ETH);
+        coin_data = await ethProcessHelper.checkIfContract('NativeCoin');
       }
       const webhookTx: WebHookTxType = {
         coin: coin_data,
@@ -230,7 +230,7 @@ class EthDepositWithdrawProcess {
         }
         if (coin.is_token) {
           const native_coin: any =
-            await ethProcessHelper.NativeCoinByCoinFamily(coin.coin_family);
+            await ethProcessHelper.checkIfContract('NativeCoin');
           await Wallet_Helper.Update_Balance(
             from_address, /// wallet_address,
             native_coin /// coin
