@@ -118,12 +118,14 @@ class EthProcessHelper {
           coin_family: config.STATIC_COIN_FAMILY.ETH,
           [Op.or]: [{ token_type: TokenStandard.ERC20 }, { token_type: null }]
         },
-        raw: true
+        raw: true,
+        logging: true
       });
+      console.log('`${config.TOKEN_TYPE_ETH}`', `${config.TOKEN_TYPE_ETH}`)
       for await (let token of tokens) {
         let findTokenData = await this.getKeyValuePair(
           `${config.TOKEN_TYPE_ETH}`,
-          token.token_address.toUpperCase()
+          token.token_address == null ? 'NativeCoin'.toUpperCase() : token.token_address.toUpperCase(),
         );
         if (!findTokenData) {
           this.setKeyValuePair(
@@ -170,9 +172,9 @@ class EthProcessHelper {
   public checkIfContract = async (address: string) => {
     try {
       let token_data: any = await this.getKeyValuePair(config.TOKEN_TYPE_ETH, address);
-      if (token_data) {
-        console.log("token_data>>>>>>>>", token_data)
-      }
+      // if (token_data) {
+      //   console.log("token_data>>>>>>>>", token_data)
+      // }
       return JSON.parse(token_data);
     } catch (err: any) {
       console.error('check_our_wallet_address >>>>>', err);
