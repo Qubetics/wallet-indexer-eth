@@ -77,11 +77,6 @@ class queue_transactions {
     public async buildTx(txReceipt: TransactionReceipt, data: blocks_trnx) {
         try {
             if (txReceipt.status !== 0 && txReceipt.logs.length > 0) {
-                const gasUsed = txReceipt.gasUsed ? Number(txReceipt.gasUsed) : 0;
-                const hexToNumberGasPrice: any = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
-                const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
-
-                const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
                 let nft_tokens_address: any = [];
                 for await (const log of txReceipt.logs) {
                     const isToken: any = await ethProcessHelper.checkIfContract(log.address);
@@ -89,6 +84,12 @@ class queue_transactions {
                         if (log.topics[0] == this.approval) {
                             continue;
                         } else if (log.topics[0] == this.transfer) {
+                            const gasUsed = txReceipt.gasUsed ? Number(txReceipt.gasUsed) : 0;
+                            const hexToNumberGasPrice: any = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
+                            const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
+
+                            const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
+
                             const decimalPrecision = isToken.decimals.toString().length - 1;
                             let finalAmount = await Utility_Helper.bigNumberSafeMath(log.data, '/', Math.pow(10, decimalPrecision))
                             finalAmount = await Utility_Helper.exponentialToDecimal(finalAmount)
@@ -117,6 +118,12 @@ class queue_transactions {
                                 log?.blockNumber
                             );
                             if (nft_tokens_address.indexOf(isNFTToken.token_address) == -1 && transferData?.length > 0) {
+                                const gasUsed = txReceipt.gasUsed ? Number(txReceipt.gasUsed) : 0;
+                                const hexToNumberGasPrice: any = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
+                                const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
+
+                                const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
+
                                 nft_tokens_address.push(isNFTToken.token_address);
                                 const fromAddress = transferData[0]?.args[0];
                                 const toAddress = transferData[0]?.args[1];
