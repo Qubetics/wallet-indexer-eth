@@ -80,7 +80,9 @@ class queue_transactions {
                 let nft_tokens_address: any = [];
                 for await (const log of txReceipt.logs) {
                     const isToken: any = await ethProcessHelper.checkIfContract(log.address);
+                    console.log('isToken >>>', isToken);
                     if (isToken && log?.topics && log?.topics[2] !== undefined && log?.topics[0] !== undefined) {
+                        console.log('isToken 22 >>>', isToken);
                         if (log.topics[0] == this.approval) {
                             continue;
                         } else if (log.topics[0] == this.transfer) {
