@@ -1,10 +1,11 @@
 
-export * from './block_process_read_trnx';
-export * from './block_process_read_queue_trnx';
-export * from "./deposit_withdraw.process";
-export * from "./pendingTx.process";
+export * from './procesedBlocks';
+export * from './processedBlocksTransactions';
+export * from "./processedDepositWithdrawTransactions";
+export * from "./processedInternalTransactions";
 export * from './process.helper';
-export * from "./statusUpdate.process";
-export * as ETH_balance_update from "./updating_balance.process"
+export * from "./processedInternalTransactionsStatus";
+// export * as ETH_balance_update from "./updating_balance.process"
+export * from "./updatingBalance.process"
 
 

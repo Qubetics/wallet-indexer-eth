@@ -1,20 +1,19 @@
-import { ethWithdrawDepositProcess, ethPendingWithdrawalProcess, ethTxStatusUpdateProcess, eth_blocks_process, eth_tx_status_deposit_withdraw, ETH_balance_update } from "./processes/index.process"
+import { ethWithdrawDepositProcess, ethPendingWithdrawalProcess, ethTxStatusUpdateProcess, ethBlocksProcess, processedBlockTransactions, updateBalanceProcess } from "./processes/index.process"
 import schedule from "node-schedule";
 class ETHStartProcess {
   constructor() {
-    this.read_block_process()
-    this.readSpecificBlock()
-    this.consume_read_block_queue()
-    this.ethWithdrawDepositProcess();
-    this.getPendingWithdrawalTxProcess();
-    this.updateTxStatusProcess();
-    this.ETHUpdateBalance();
-    // this.testing_node()
+    this.readBlockProcess();
+    this.readSpecificBlock();
+    this.consumeBlockTxQueue()
+    this.consumeWithdrawDepositTxsQueue();
+    this.internalTxsInQueue();
+    this.consumeInternalTxQueue();
+    this.consumeUpdateBalanceQueue();
   }
-  public read_block_process() {
+  public readBlockProcess() {
     schedule.scheduleJob("*/8 * * * * *", async function () {
-      await eth_blocks_process.getBlocks();
-      await eth_blocks_process.readBehindBlock()
+      await ethBlocksProcess.readCurrentBlocks();
+      await ethBlocksProcess.readBehindBlocks()
     });
   }
   // public testing_node() {
@@ -24,33 +23,33 @@ class ETHStartProcess {
   // }
   public readSpecificBlock() {
     schedule.scheduleJob('*/1 * * * *', async function () {
-      await eth_blocks_process.readSpecificBlock();
+      await ethBlocksProcess.readSpecificBlock();
     })
   }
-  public consume_read_block_queue() {
+  public consumeBlockTxQueue() {
     setTimeout(async () => {
-      await eth_tx_status_deposit_withdraw.startBlockTxQueue();
-      await eth_tx_status_deposit_withdraw.startBehindBlockTxQueue();
+      await processedBlockTransactions.startBlockTxQueue();
+      await processedBlockTransactions.startBehindBlockTxQueue();
     }, 10000);
   }
-  public async ethWithdrawDepositProcess() {
+  public async consumeWithdrawDepositTxsQueue() {
     setTimeout(async () => {
       await ethWithdrawDepositProcess.startDepositQueue();
     }, 10000);
   }
-  public getPendingWithdrawalTxProcess() {
+  public internalTxsInQueue() {
     schedule.scheduleJob("*/10 * * * * *", async function () {
       await ethPendingWithdrawalProcess.getTransactionFromDB();
     });
   }
-  public async updateTxStatusProcess() {
+  public async consumeInternalTxQueue() {
     setTimeout(async () => {
       await ethTxStatusUpdateProcess.startTxStatusUpdateQueue();
     }, 10000);
   }
-  public async ETHUpdateBalance() {
+  public async consumeUpdateBalanceQueue() {
     setTimeout(async () => {
-      await ETH_balance_update.default.update_wallet_balance();
+      await updateBalanceProcess.updateWalletBalance();
     }, 10000);
   }
 }

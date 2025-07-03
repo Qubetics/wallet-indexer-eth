@@ -3,7 +3,7 @@ import {
     Db_Helper
 } from ".";
 
-import { NotificationModel } from "../models";
+import { notificationModel } from "../models";
 import firebaseAdmin from 'firebase-admin';
 import { fcmServiceAccount } from "../constants/fcm.admin.key";
 import { Op } from "sequelize";
@@ -87,17 +87,17 @@ class UtilityHelper {
 
     public async SendNotification(data: any) {
         try {
-            let toUserId: number = data.to_user_id ? data.to_user_id : 0;
-            let deviceTokens: any = await Db_Helper.GetDeviceTokens(toUserId, data.wallet_address, data.coin_family);
-            let finalDeviceTokens: any = [];
+            const toUserId: number = data.to_user_id ? data.to_user_id : 0;
+            const deviceTokens: any = await Db_Helper.GetDeviceTokens(data.wallet_address, data.coin_family);
+            const finalDeviceTokens: any = [];
 
-            for await (let deviceToken of deviceTokens) {
+            for await (const deviceToken of deviceTokens) {
                 finalDeviceTokens.push(deviceToken.device_token);
             }
 
             if (finalDeviceTokens?.length > 0) {
-                let announcement_title: string = data.announcement_title == undefined ? "" : data.announcement_title;
-                let announcement_message: string = data.announcement_message == undefined ? "" : data.announcement_message;
+                const announcement_title: string = data.announcement_title == undefined ? "" : data.announcement_title;
+                const announcement_message: string = data.announcement_message == undefined ? "" : data.announcement_message;
                 const notification = {
                     title: data.title,
                     body: data.message,
@@ -131,7 +131,7 @@ class UtilityHelper {
             }
 
             /* save notification */
-            const checkOldNotif: any = await NotificationModel.count({
+            const checkOldNotif: any = await notificationModel.count({
                 where: {
                     wallet_address: { [Op.like]: data.wallet_address },
                     notification_type: data.notification_type,
@@ -139,7 +139,7 @@ class UtilityHelper {
                 },
             });
             if (checkOldNotif == 0) {
-                let notificationModel: any = {
+                const notificationData: any = {
                     message: data.message,
                     from_user_id: data.from_user_id ? data.from_user_id : 0,
                     amount: data.amount,
@@ -152,9 +152,9 @@ class UtilityHelper {
                     coin_family: data.coin_family,
                     tx_type: data.tx_type,
                     view_status: "0",
-                    state: "0",
+                    // state: "0",
                 };
-                await NotificationModel.create(notificationModel);
+                await notificationModel.create(notificationData);
             }
             return true;
         } catch (error) {
@@ -167,4 +167,4 @@ class UtilityHelper {
 
 
 }
-export let Utility_Helper = new UtilityHelper();
+export let utilityHelper = new UtilityHelper();

@@ -1,14 +1,14 @@
 import { config } from "../config/config";
 import kafkaHelper from "../config/kafka.helper";
-import { Blockchain_Helper, Utility_Helper } from "../helpers";
-import { blocks_trnx } from "../interfaces/global_helper";
+import { blockChainHelper, utilityHelper } from "../helpers";
+import { blocksTrnx } from "../interfaces/globalHelper";
 import ethProcessHelper from "./process.helper";
 import { TxType } from "../types/ERC20Tokens.types";
 import { TrnxTypeEnum } from "../enum";
-import { global_helper } from "../helpers/global_helper";
+import { globalHelper } from "../helpers/global.helper";
 import { ethers, TransactionReceipt } from "ethers";
 
-class queue_transactions {
+class ProcessedBlockTransactions {
     public approval: string | null;
     public swap: string | null;
     public transfer: string | null;
@@ -27,12 +27,12 @@ class queue_transactions {
     }
 
     public startBlockTxQueue = async () => {
-        let consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_block_tx_group_id });
+        const consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_block_tx_group_id });
         await consumer.subscribe({ topic: this.eth_block_tx_topic, fromBeginning: true });
 
         await consumer.run({
             eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-                this.read_trnx(JSON.parse(message.value.toString()))
+                this.readTrnx(JSON.parse(message.value.toString()))
             }
         }).catch((err: Error) => {
             console.log("🔥 ~ startBlockTxQueue consumer error", err);
@@ -40,20 +40,20 @@ class queue_transactions {
     };
 
     public startBehindBlockTxQueue = async () => {
-        let consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_behind_block_tx_group_id });
+        const consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_behind_block_tx_group_id });
         await consumer.subscribe({ topic: this.eth_behind_block_tx_topic, fromBeginning: true });
 
         await consumer.run({
             eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-                this.read_trnx(JSON.parse(message.value.toString()))
+                this.readTrnx(JSON.parse(message.value.toString()))
             }
         }).catch((err: Error) => {
             console.log("🔥 ~ startBehindBlockTxQueue consumer error", err);
         });
     };
-    public async read_trnx(data: blocks_trnx) {
+    public async readTrnx(data: blocksTrnx) {
         try {
-            const txReceipt: TransactionReceipt | null = await Blockchain_Helper.provider.getTransactionReceipt(data.tx_id);
+            const txReceipt: TransactionReceipt | null = await blockChainHelper.provider.getTransactionReceipt(data.tx_id);
             if (txReceipt == null && Number(data.retry_count) < 6) {
                 data.retry_count = Number(data.retry_count) + 1;
                 await kafkaHelper.produceMessage(this.eth_behind_block_tx_topic, data)
@@ -63,7 +63,7 @@ class queue_transactions {
             if (txReceipt?.status == 0) {
                 console.log("(txReceipt.status === false && txReceipt !== null")
             } else if (txReceipt) {
-                await eth_tx_status_deposit_withdraw.buildTx(txReceipt, data)
+                await this.buildTx(txReceipt, data)
             }
         } catch (error: any) {
             console.error("Error in read_trnx>>>", error)
@@ -74,7 +74,7 @@ class queue_transactions {
             }
         }
     }
-    public async buildTx(txReceipt: TransactionReceipt, data: blocks_trnx) {
+    public async buildTx(txReceipt: TransactionReceipt, data: blocksTrnx) {
         try {
             if (txReceipt.status !== 0 && txReceipt.logs.length > 0) {
                 let nft_tokens_address: any = [];
@@ -86,13 +86,13 @@ class queue_transactions {
                         } else if (log.topics[0] == this.transfer) {
                             const gasUsed = txReceipt.gasUsed ? Number(txReceipt.gasUsed) : 0;
                             const hexToNumberGasPrice: any = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
-                            const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
+                            const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
 
-                            const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
+                            const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
 
                             const decimalPrecision = isToken?.decimals?.toString().length - 1;
-                            let finalAmount = await Utility_Helper.bigNumberSafeMath(log.data, '/', Math.pow(10, decimalPrecision))
-                            finalAmount = await Utility_Helper.exponentialToDecimal(finalAmount)
+                            let finalAmount = await utilityHelper.bigNumberSafeMath(log.data, '/', Math.pow(10, decimalPrecision))
+                            finalAmount = await utilityHelper.exponentialToDecimal(finalAmount)
                             let toAddress: string = '0x' + log.topics[2].substring(26, log.topics[2].length);
                             /* in case of swap trnx */
                             let fromAddress: string = '0x' + log.topics[1].substring(26, log.topics[1].length);
@@ -120,9 +120,9 @@ class queue_transactions {
                             if (nft_tokens_address.indexOf(isNFTToken.token_address) == -1 && transferData?.length > 0) {
                                 const gasUsed = txReceipt.gasUsed ? Number(txReceipt.gasUsed) : 0;
                                 const hexToNumberGasPrice: any = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
-                                const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
+                                const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
 
-                                const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
+                                const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
 
                                 nft_tokens_address.push(isNFTToken.token_address);
                                 const fromAddress = transferData[0]?.args[0];
@@ -147,20 +147,20 @@ class queue_transactions {
                     }
                     /** swap transaction then also check eth */
                     if (log?.topics && log?.topics[0] == this.swap) {
-                        await eth_tx_status_deposit_withdraw.check_eth_deposit(data, txReceipt);
+                        await this.checkEthDeposit(data, txReceipt);
                     } else if (isToken == null && log?.topics[2] !== undefined && log?.topics[0] == this.transfer) {
-                        await eth_tx_status_deposit_withdraw.check_eth_deposit(data, txReceipt)
+                        await this.checkEthDeposit(data, txReceipt)
                     }
                 }
             } else {
-                await eth_tx_status_deposit_withdraw.check_eth_deposit(data, txReceipt);
+                await this.checkEthDeposit(data, txReceipt);
             }
         } catch (error: any) {
             console.error("buildTx error >>>", (error as Error).message);
-            await global_helper.save_error_logs('Eth_buildTx', error.message)
+            await globalHelper.saveErrorLogs('Eth_buildTx', error.message)
         }
     };
-    public async check_eth_deposit(data: blocks_trnx, txReceipt: TransactionReceipt) {
+    public async checkEthDeposit(data: blocksTrnx, txReceipt: TransactionReceipt) {
         try {
             /** for check the eth deposit */
             if (
@@ -170,10 +170,10 @@ class queue_transactions {
             ) {
                 const gasUsed = txReceipt.gasUsed ? txReceipt.gasUsed : 0;
                 const effectiveGasPrice: number = Number(txReceipt.gasPrice) || 0;
-                const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice);
-                const gasInEth = await Blockchain_Helper.convertWeiToEth(txFee);
+                const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice);
+                const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
 
-                const ethValue = await Blockchain_Helper.convertWeiToEth((data.value ? data.value : 0));
+                const ethValue = await blockChainHelper.convertWeiToEth((data.value ? data.value : 0));
                 const amount = parseFloat(ethValue.toString());
 
                 const txData: TxType = {
@@ -184,35 +184,54 @@ class queue_transactions {
                     amount,
                     blockId: data?.block_number,
                     isNFTToken: false,
-                    txType: TrnxTypeEnum.NULL,
+                    txType: null,
                     trnx_fee: Number(gasInEth)
                 };
                 await this.checkAddressInDB(txData);
             }
         } catch (error: any) {
             console.error("💥 ~ ~ check_eth_deposit error", (error as Error).message);
-            await global_helper.save_error_logs('ETH_check_deposit', error.message)
+            await globalHelper.saveErrorLogs('ETH_check_deposit', error.message)
 
         }
     }
     public async checkAddressInDB(txData: TxType) {
         try {
-            let ourTrnx: any = null;
-            let withdraw = await ethProcessHelper.check_our_wallet_address(txData.fromAddress);
-            if (withdraw) {
-                console.log("Found the user in FROM (WITHDRAW) tx 😸");
-                txData.txType = TrnxTypeEnum.WITHDRAW;
-                ourTrnx = txData;
+            // let ourTrnx: any = null;
+            const addresses = [txData.fromAddress, txData.toAddress].filter(Boolean);
+
+            if (addresses.length > 0) {
+                const results = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
+
+                if (results) {
+                    const [withdrawTx, depositTx] = results as string[];
+                    if (depositTx) {
+                        // console.log('Deposit results >>>', depositTx);
+                        txData.txType = TrnxTypeEnum.DEPOSIT;
+                    } else if (withdrawTx) {
+                        // console.log('Withdraw results >>>', withdrawTx);
+                        txData.txType = TrnxTypeEnum.WITHDRAW;
+                    }
+                    // ourTrnx = txData;
+                }
+                // return;
             }
-            let deposit = await ethProcessHelper.check_our_wallet_address(txData.toAddress);
-            if (deposit) {
-                console.log("Found the user in to (DEPOSIT) tx 😸");
-                txData.txType = TrnxTypeEnum.DEPOSIT;
-                ourTrnx = txData;
-            }
-            if (ourTrnx) {
-                await eth_tx_status_deposit_withdraw.addTxToQueue(
-                    ourTrnx,
+            // const withdraw = await ethProcessHelper.check_our_wallet_address(txData.fromAddress);
+            // if (withdraw) {
+            //     console.log("Found the user in FROM (WITHDRAW) tx 😸");
+            //     txData.txType = TrnxTypeEnum.WITHDRAW;
+            //     ourTrnx = txData;
+            // }
+            // const deposit = await ethProcessHelper.check_our_wallet_address(txData.toAddress);
+            // if (deposit) {
+            //     console.log("Found the user in to (DEPOSIT) tx 😸");
+            //     txData.txType = TrnxTypeEnum.DEPOSIT;
+            //     ourTrnx = txData;
+            // }
+            if (txData.txType !== null) {
+                // console.log('ourTrnx.txType >>>', typeof txData.txType);
+                await this.addTxToQueue(
+                    txData,
                     this.deposit_withdraw_topic || ""
                 );
             }
@@ -220,6 +239,7 @@ class queue_transactions {
             console.error("Error in checkAddressInDB>>", err)
         }
     }
+
     public getTransferEventDetail = async (
         tokenAddress: string,
         blockId: number
@@ -228,7 +248,7 @@ class queue_transactions {
             const contract = new ethers.Contract(
                 tokenAddress,
                 config.ERC721ABI,
-                Blockchain_Helper.provider
+                blockChainHelper.provider
             );
 
             const filter = contract.filters.Transfer();
@@ -244,15 +264,16 @@ class queue_transactions {
             return [];
         }
     };
+
     public async addTxToQueue(data: TxType, queueName: string) {
         try {
             await kafkaHelper.produceMessage(queueName, data)
         } catch (err: any) {
             console.error("addTxToQueue", (err as Error).message);
-            await global_helper.save_error_logs('ETH_checkAddressInDB', err.message)
+            await globalHelper.saveErrorLogs('ETH_checkAddressInDB', err.message)
 
         }
     };
 
 }
-export const eth_tx_status_deposit_withdraw = new queue_transactions()
+export const processedBlockTransactions = new ProcessedBlockTransactions()

@@ -47,6 +47,7 @@ let dataObjIndex = {
 }
 
 
-const EthOldBLockModel = db.db_write.define<EthOldBlockInstance>("eth_old_blocks", dataObj, dataObjIndex);
+// const EthOldBLockModel = db.db_write.define<EthOldBlockInstance>("eth_old_blocks", dataObj, dataObjIndex);
+const ethOldBLockModel = db.db_write.define<EthOldBlockInstance>("eth_old_blocks", dataObj, dataObjIndex);
 
-export default EthOldBLockModel;
+export default ethOldBLockModel;

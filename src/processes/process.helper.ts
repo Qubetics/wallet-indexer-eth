@@ -1,12 +1,12 @@
 import database from "../config/db";
 import Sequelize, { QueryTypes } from "sequelize";
-import { CoinInterface, CoinsModel, EthOldBLockModel, WalletInterface } from "../models";
+import { CoinInterface, coinsModel, ethOldBLockModel, WalletInterface } from "../models";
 import redisClient from "../config/redis";
 import { promisify } from "util";
 import { config } from "../config/config";
-import { BooleanEnum, CoinFamilyEnum, TokenStandard } from "../enum";
-import { global_helper } from "../helpers/global_helper";
-import { Blockchain_Helper } from "../helpers";
+import { TokenStandard } from "../enum";
+import { globalHelper } from "../helpers/global.helper";
+import { blockChainHelper } from "../helpers";
 import { Op } from "sequelize";
 
 class EthProcessHelper {
@@ -28,24 +28,60 @@ class EthProcessHelper {
       return null;
     }
   }
-  public async setBlocks(field: string, key: string, minBlockConfirmation: number, newBlock: number | null) {
+
+  public async getMultipleKeyValuePairs(keyName: string, fields: string[]) {
     try {
-      let latestBlock = await Blockchain_Helper.provider.getBlockNumber();
-      latestBlock = latestBlock - minBlockConfirmation;
-      if (newBlock) {
-        if (newBlock < latestBlock) {
-          await ethProcessHelper.setKeyValuePair(field, key, latestBlock.toString())
-        } else {
-          console.log("No updation of blocks")
-        }
-      } else {
-        await ethProcessHelper.setKeyValuePair(field, key, latestBlock.toString())
-      }
+      const upperFields = fields.map(f => f.toUpperCase());
+      return new Promise((resolve, reject) => {
+        redisClient.hmget(keyName, ...upperFields, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
     } catch (err: any) {
-      console.error("Error in  getBlocks", err)
-      await global_helper.save_error_logs('ETH_setBlocks', err.message)
+      console.error('getMultipleKeyValuePairs >>>>', err);
+      return null;
     }
   }
+
+  public async setBlocks(keyName: string, filed: string, minBlockConfirmation: number, newBlock: number | null) {
+    try {
+      let latestBlock = await blockChainHelper.provider.getBlockNumber();
+      latestBlock -= minBlockConfirmation;
+
+      const shouldUpdate = !newBlock || newBlock < latestBlock;
+
+      if (shouldUpdate) {
+        await ethProcessHelper.setKeyValuePair(keyName, filed, latestBlock.toString());
+      } else {
+        console.log("No update required for block number");
+      }
+    } catch (err: any) {
+      console.error("Error in setBlocks:", err);
+      await globalHelper.saveErrorLogs('ETH_setBlocks', err.message);
+    }
+  }
+
+  // public async setBlocks(field: string, key: string, minBlockConfirmation: number, newBlock: number | null) {
+  //   try {
+  //     let latestBlock = await blockChainHelper.provider.getBlockNumber();
+  //     /** Minus Buffer Block From Latest Block */
+  //     latestBlock = latestBlock - minBlockConfirmation;
+  //     if (newBlock) {
+  //       if (newBlock < latestBlock) {
+  //         await ethProcessHelper.setKeyValuePair(field, key, latestBlock.toString())
+  //       } else {
+  //         console.log("No updation of blocks")
+  //       }
+  //     } else {
+  //       await ethProcessHelper.setKeyValuePair(field, key, latestBlock.toString())
+  //     }
+  //   } catch (err: any) {
+  //     console.error("Error in  getBlocks", err)
+  //     await globalHelper.saveErrorLogs('ETH_setBlocks', err.message)
+  //   }
+  // }
+
   public async setKeyValuePair(keyName: string, field: string, value: string) {
     try {
       redisClient.hset(keyName, field.toUpperCase(), value);
@@ -53,32 +89,33 @@ class EthProcessHelper {
       console.error('setKeyValuePair >>>', err);
     }
   }
+
   public async diff_blocks_add_in_db(current_block: number, old_block: number) {
     try {
-      let value_exist: any = await this.getKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH)
-      if (value_exist) {
-        let setvalue: number = Number(value_exist) + 1;
-        if (Number(value_exist) <= 100) {
-          await this.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH, setvalue.toString())
-          if (Number(value_exist) == 0 || Number(value_exist) == 5 || Number(value_exist) == 10 || Number(value_exist) == 20 || Number(value_exist) == 50 || Number(value_exist) == 75 || Number(value_exist) == 100) {
-            let email_body = `<p>Ethereum Node Issue ${Number(value_exist)}</p><p>Current block running = ${current_block}.</p><p>Old Block = ${old_block}.</p>`;
-            await global_helper.send_mail(config.NODE_ISSUE_ALERT_EMAIL, email_body, `Ethereum Node Issue ${Number(value_exist)}`);
-          } else {
-            console.log("no email")
-          }
-        } else {
-          console.log("Number(value_exist) > 100")
-        }
-      } else {
-        await this.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH, '0')
-      }
-      let dataToInsert = { block_number: old_block, coin_family: config.STATIC_COIN_FAMILY.ETH, start_block: old_block, end_block: current_block, status: 0 }
+      // const value_exist: any = await this.getKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH)
+      // if (value_exist) {
+      //   const setvalue: number = Number(value_exist) + 1;
+      //   if (Number(value_exist) <= 100) {
+      //     await this.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH, setvalue.toString())
+      //     if (Number(value_exist) == 0 || Number(value_exist) == 5 || Number(value_exist) == 10 || Number(value_exist) == 20 || Number(value_exist) == 50 || Number(value_exist) == 75 || Number(value_exist) == 100) {
+      //       let email_body = `<p>Ethereum Node Issue ${Number(value_exist)}</p><p>Current block running = ${current_block}.</p><p>Old Block = ${old_block}.</p>`;
+      //       await global_helper.sendMail(config.NODE_ISSUE_ALERT_EMAIL, email_body, `Ethereum Node Issue ${Number(value_exist)}`);
+      //     } else {
+      //       console.log("no email")
+      //     }
+      //   } else {
+      //     console.log("Number(value_exist) > 100")
+      //   }
+      // } else {
+      //   await this.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH, '0')
+      // }
+      const dataToInsert = { block_number: old_block, coin_family: config.STATIC_COIN_FAMILY.ETH, start_block: old_block, end_block: current_block, status: 0 }
       console.log("dataToInsert>>>>", dataToInsert)
-      await EthOldBLockModel.create(dataToInsert)
+      await ethOldBLockModel.create(dataToInsert)
       return true;
     } catch (err: any) {
       console.error("💥 ~ Error in diff_blocks_add_in_redis.", err)
-      await global_helper.save_error_logs('ETH_diff_blocks_add_in_db', err.message)
+      await globalHelper.saveErrorLogs('ETH_diff_blocks_add_in_db', err.message)
       return false;
     }
   }
@@ -107,11 +144,9 @@ class EthProcessHelper {
     }
   }
 
-
-
   public fetchERC20Tokens = async () => {
     try {
-      let tokens: any = await CoinsModel.findAll({
+      const tokens: any = await coinsModel.findAll({
         attributes: ["coin_id", "coin_symbol", "coin_family", "is_token", "token_type", "decimals", "token_address", "for_swap", "added_by"],
         where: {
           coin_status: 1,
@@ -119,11 +154,11 @@ class EthProcessHelper {
           [Op.or]: [{ token_type: TokenStandard.ERC20 }, { token_type: null }]
         },
         raw: true,
-        logging: true
+        // logging: true
       });
-      console.log('`${config.TOKEN_TYPE_ETH}`', `${config.TOKEN_TYPE_ETH}`)
-      for await (let token of tokens) {
-        let findTokenData = await this.getKeyValuePair(
+      // console.log('`${config.TOKEN_TYPE_ETH}`', `${config.TOKEN_TYPE_ETH}`)
+      for await (const token of tokens) {
+        const findTokenData = await this.getKeyValuePair(
           `${config.TOKEN_TYPE_ETH}`,
           token.token_address == null ? 'NativeCoin'.toUpperCase() : token.token_address.toUpperCase(),
         );
@@ -140,7 +175,7 @@ class EthProcessHelper {
       // redisClient.set(config.TOKEN_TYPE_ETH || "", JSON.stringify(tokens));
     } catch (err: any) {
       console.error('fetchERC20Tokens >>>>>', err);
-      await global_helper.save_error_logs('ETH_fetchERC20Tokens', err.message)
+      await globalHelper.saveErrorLogs('ETH_fetchERC20Tokens', err.message)
     }
   }
 
@@ -171,7 +206,7 @@ class EthProcessHelper {
 
   public checkIfContract = async (address: string) => {
     try {
-      let token_data: any = await this.getKeyValuePair(config.TOKEN_TYPE_ETH, address);
+      const token_data: any = await this.getKeyValuePair(config.TOKEN_TYPE_ETH, address);
       // if (token_data) {
       //   console.log("token_data>>>>>>>>", token_data)
       // }
@@ -237,7 +272,7 @@ class EthProcessHelper {
 
   public check_our_wallet_address = async (address: string) => {
     try {
-      let wallet_data: any = await this.getKeyValuePair(config.ETH_WALLET_ADDRESS, address);
+      const wallet_data: any = await this.getKeyValuePair(config.ETH_WALLET_ADDRESS, address);
       if (wallet_data) {
         console.log("wallet_Data>>>>>>>>", wallet_data)
       }
@@ -247,6 +282,8 @@ class EthProcessHelper {
       return null;
     }
   };
+
+
   // public NativeCoinByCoinFamily = async (
   //   coin_family: CoinFamilyEnum
   // ) => {
@@ -284,14 +321,14 @@ class EthProcessHelper {
   // }
   public behindBlocks = async () => {
     try {
-      let behindBlocks: any = await EthOldBLockModel.findOne({
+      const behindBlocks: any = await ethOldBLockModel.findOne({
         attributes: ['id', 'block_number', 'start_block', 'end_block'],
         where: { status: 0 },
         raw: true,
         order: [['id', 'ASC']]
       })
       if (behindBlocks) {
-        let add_data = {
+        const add_data = {
           id: behindBlocks.id,
           start_block: behindBlocks.start_block,
           end_block: behindBlocks.end_block,

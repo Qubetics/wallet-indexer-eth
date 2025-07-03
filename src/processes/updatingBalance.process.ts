@@ -1,13 +1,14 @@
 import { config } from "../config";
 import kafkaHelper from "../config/kafka.helper";
-import { Wallet_Helper } from "../helpers";
-import { WalletModel } from "../models";
+import { walletHelper } from "../helpers";
+import { walletModel } from "../models";
 
 class UpdateBalanceController {
     public eth_pending_balance_update_topic = config.config.KAFKA_BALANCE.ETH_PENDING_BALANCE_UPDATE_TOPIC;
 
-    public update_wallet_balance = async () => {
-        let consumer = await kafkaHelper.kafka.consumer({ groupId: config.config.KAFKA_BALANCE.ETH_PENDING_BALANCE_UPDATE_GROUP_ID });
+    // public update_wallet_balance = async () => {
+    public updateWalletBalance = async () => {
+        const consumer = await kafkaHelper.kafka.consumer({ groupId: config.config.KAFKA_BALANCE.ETH_PENDING_BALANCE_UPDATE_GROUP_ID });
         await consumer.subscribe({ topic: this.eth_pending_balance_update_topic, fromBeginning: true });
         await consumer.run({
             eachMessage: async ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
@@ -23,10 +24,9 @@ class UpdateBalanceController {
     public updateBalance = async (data: any) => {
         try {
             if (data.queue_count < 10) {
-
-                let balance: any = await Wallet_Helper.Update_Balance_Queue(data.wallet_address, data.coin_data);
+                const balance: any = await walletHelper.getBalance(data.wallet_address, data.coin_data);
                 if (balance !== null) {
-                    await WalletModel.update(
+                    await walletModel.update(
                         { balance: Number(balance) },
                         { where: { wallet_address: data.wallet_address, coin_id: data.coin_data.coin_id } })
                 } else {
@@ -55,4 +55,4 @@ class UpdateBalanceController {
 }
 
 
-export default new UpdateBalanceController();
+export const updateBalanceProcess = new UpdateBalanceController();

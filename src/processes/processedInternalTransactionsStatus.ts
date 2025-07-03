@@ -1,17 +1,17 @@
 import { config } from "../config/config";
-import { BlockChainStatusEnum, BooleanEnum, CoinFamilyEnum, NotificationTypeEnum, TokenStandard, TrnxTypeEnum } from "../enum";
-import { NotificationInterface, TrnxHistoryModel } from "../models";
-import { Utility_Helper, Wallet_Helper, Blockchain_Helper, Db_Helper } from "../helpers";
+import { BlockChainStatusEnum, BooleanEnum, NotificationTypeEnum, TokenStandard, TrnxTypeEnum } from "../enum";
+import { NotificationInterface, trnxHistoryModel } from "../models";
+import { utilityHelper, walletHelper, blockChainHelper } from "../helpers";
 import ethProcessHelper from "./process.helper";
 import { Op } from "sequelize";
-import { global_helper } from "../helpers/global_helper";
+import { globalHelper } from "../helpers/global.helper";
 import kafkaHelper from "../config/kafka.helper";
-import { pending_trnx } from "../interfaces/global_helper";
+import { pendingTrnx } from "../interfaces/globalHelper";
 import { ethers, TransactionResponse } from "ethers";
 class EthTxStatusUpdateProcess {
 
   public startTxStatusUpdateQueue = async () => {
-    let consumer = await kafkaHelper.kafka.consumer({ groupId: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_GROUP_ID });
+    const consumer = await kafkaHelper.kafka.consumer({ groupId: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_GROUP_ID });
     await consumer.subscribe({ topic: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_TOPIC, fromBeginning: true });
     await consumer.run({
       eachMessage: async ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
@@ -24,11 +24,11 @@ class EthTxStatusUpdateProcess {
     });
   };
 
-  public getTx = async (data: pending_trnx) => {
+  public getTx = async (data: pendingTrnx) => {
     console.log('Pending data >>>>>>>', data);
     try {
       // Initialize provider
-      const provider = Blockchain_Helper.provider;
+      const provider = blockChainHelper.provider;
 
       const transaction: TransactionResponse | null = await provider.getTransaction(data.tx_id);
       if (transaction && transaction.blockNumber) {
@@ -38,16 +38,16 @@ class EthTxStatusUpdateProcess {
         const gasUsed = transactionReceipt?.gasUsed || BigInt(0);
         const gasPrice = transaction.gasPrice || BigInt(0);
         const gasTotal = transaction.gasLimit || BigInt(0);
-        const txFee = await Utility_Helper.bigNumberSafeMath(gasUsed, '*', gasPrice);
+        const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', gasPrice);
         // Calculate gas in ETH (using ethers v6 formatting utils)
         const gasInEth: number = Number(
           ethers.formatEther(txFee)
         );
 
         if (gasTotal > BigInt(0) && gasUsed > BigInt(0)) {
-          const gasDiff = await Utility_Helper.bigNumberSafeMath(gasTotal, '-', gasUsed);
+          const gasDiff = await utilityHelper.bigNumberSafeMath(gasTotal, '-', gasUsed);
 
-          const reverted = await Utility_Helper.bigNumberSafeMath(gasPrice, '*', gasDiff);
+          const reverted = await utilityHelper.bigNumberSafeMath(gasPrice, '*', gasDiff);
           gasReverted = Number(ethers.formatEther(reverted));
         }
 
@@ -146,7 +146,7 @@ class EthTxStatusUpdateProcess {
   public async updateBroadcastTx(
     trx_data: any
   ) {
-    const txnData: any = await TrnxHistoryModel.findOne({ attributes: ['from_adrs', 'amount', 'user_id', 'id', 'to_adrs', 'type', 'coin_family', 'fiat_type'], where: { tx_id: trx_data.txid, status: 'completed', [Op.or]: [{ blockchain_status: { [Op.is]: null as any } }, { blockchain_status: 'pending' }] }, raw: true });
+    const txnData: any = await trnxHistoryModel.findOne({ attributes: ['from_adrs', 'amount', 'user_id', 'id', 'to_adrs', 'type', 'coin_family'], where: { tx_id: trx_data.txid, status: 'completed', [Op.or]: [{ blockchain_status: { [Op.is]: null as any } }, { blockchain_status: 'pending' }] }, raw: true });
     if (txnData) {
       const from_address = txnData.from_adrs;
       const amount = txnData.amount;
@@ -158,7 +158,7 @@ class EthTxStatusUpdateProcess {
       const coin_symbol = trx_data?.coin?.coin_symbol
       const coin_family = txnData.coin_family;
       //Update transaction status
-      const txUpdateRes = await TrnxHistoryModel.update({ blockchain_status: status_tx, tx_fee: trx_data.tx_fee, gas_reverted: trx_data.gas_reverted }, { where: { id: tx_row_id } })
+      const txUpdateRes = await trnxHistoryModel.update({ blockchain_status: status_tx, tx_fee: trx_data.tx_fee, gas_reverted: trx_data.gas_reverted }, { where: { id: tx_row_id } })
       if (txUpdateRes) {
         if (status_tx == BlockChainStatusEnum.CONFIRMED) {
           /** save rewrad */
@@ -166,96 +166,105 @@ class EthTxStatusUpdateProcess {
             console.log("transaction >>", tx_type, "transaction id ", tx_row_id)
           }
 
-          const AddressWithdraw: any = await ethProcessHelper.check_our_wallet_address(from_address);
-          if (AddressWithdraw) {
-            /** update withdraw user eth balance */
-            if (tx_type !== TrnxTypeEnum.DAPP) {
-              const native_coin: any = await ethProcessHelper.checkIfContract('NativeCoin');
-              await Wallet_Helper.Update_Balance(from_address, native_coin);
-              if (trx_data?.coin?.is_token === BooleanEnum.true && trx_data.coin?.token_type.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
-                /** Update User ERC20 Token Balance */
-                await Wallet_Helper.Update_Balance(from_address, trx_data?.coin);
-              }
-            } else { // Entered in DAPP transactioin
-              await Wallet_Helper.Update_all_active_coin_balance(from_address, coin_family);
-            }
+          const addresses = [from_address, to_address].filter(Boolean);
+          const results = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
+          if (results) {
+            const [addressWithdraw, addressDeposit]: any = results as string[];
+            // const AddressWithdraw: any = await ethProcessHelper.check_our_wallet_address(from_address);
+            // const Addressdeposit: any = await ethProcessHelper.check_our_wallet_address(to_address);
 
-            let trnxTypeW: string = "Withdraw";
-            switch (tx_type) {
-              case TrnxTypeEnum.DAPP:
-                trnxTypeW = "Smart Contract Execution";
-                break;
-              case TrnxTypeEnum.APPROVE:
-                trnxTypeW = "Approval";
-                break;
-              case TrnxTypeEnum.SWAP:
-                trnxTypeW = "Swap";
-                break;
-              case TrnxTypeEnum.CROSS_CHAIN:
-                trnxTypeW = "Cross chain Swap";
-                break;
-              default:
-                break;
-            }
-            const notiMsg = trx_data.coin?.token_type == TokenStandard.ERC721 ?
-              `${trnxTypeW} request of NFT(${coin_symbol.toUpperCase()} ) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin_symbol.toUpperCase()} has been confirmed.`;
-
-            const notifData: NotificationInterface = {
-              title: trnxTypeW.toUpperCase(),
-              message: notiMsg,
-              amount: amount,
-              from_user_id: 0,
-              to_user_id: user_id,
-              coin_symbol: coin_symbol,
-              wallet_address: from_address,
-              tx_id: tx_row_id,
-              coin_id: trx_data?.coin?.coin_id,
-              coin_family: trx_data?.coin.coin_family,
-              tx_type: tx_type,
-              notification_type: trnxTypeW,
-              state: "confirmed"
-            };
-            Utility_Helper.SendNotification(notifData);
-          }
-          const Addressdeposit: any = await ethProcessHelper.check_our_wallet_address(to_address);
-          if (Addressdeposit) {
-            const to_user_id: number = Addressdeposit ? Addressdeposit.user_id : 0;
-            /** update to adrs wallet balance */
-            if (to_address !== from_address) {
+            // Validate that results is an object with address keys
+            //const AddressWithdraw: any = await ethProcessHelper.check_our_wallet_address(from_address);
+            if (addressWithdraw) {
+              /** update withdraw user eth balance */
               if (tx_type !== TrnxTypeEnum.DAPP) {
-                if (trx_data.coin?.token_type === null || trx_data.coin?.token_type?.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
-                  let balance: any = await Wallet_Helper.Update_Balance(
-                    to_address, /// wallet_address,
-                    trx_data?.coin /// coin
-                  );
-                  await global_helper.check_coin_in_wallet(to_address, trx_data?.coin, balance)
+                const native_coin: any = await ethProcessHelper.checkIfContract('NativeCoin');
+                await walletHelper.updateBalance(from_address, native_coin);
+                if (trx_data?.coin?.is_token === BooleanEnum.true && trx_data.coin?.token_type.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
+                  /** Update User ERC20 Token Balance */
+                  await walletHelper.updateBalance(from_address, trx_data?.coin);
                 }
-              } else {
-                await Wallet_Helper.Update_all_active_coin_balance(to_address, coin_family);
+              } else { // Entered in DAPP transactioin
+                await walletHelper.updateAllActiveCoinBalance(from_address, coin_family);
               }
+
+              let trnxTypeW: string = "Withdraw";
+              switch (tx_type) {
+                case TrnxTypeEnum.DAPP:
+                  trnxTypeW = "Smart Contract Execution";
+                  break;
+                case TrnxTypeEnum.APPROVE:
+                  trnxTypeW = "Approval";
+                  break;
+                case TrnxTypeEnum.SWAP:
+                  trnxTypeW = "Swap";
+                  break;
+                case TrnxTypeEnum.CROSS_CHAIN:
+                  trnxTypeW = "Cross chain Swap";
+                  break;
+                default:
+                  break;
+              }
+              const notiMsg = trx_data.coin?.token_type == TokenStandard.ERC721 ?
+                `${trnxTypeW} request of NFT(${coin_symbol.toUpperCase()} ) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await utilityHelper.bigNumberSafeConversion(amount)} ${coin_symbol.toUpperCase()} has been confirmed.`;
+
+              const notifData: NotificationInterface = {
+                title: trnxTypeW.toUpperCase(),
+                message: notiMsg,
+                amount: amount,
+                from_user_id: 0,
+                to_user_id: user_id,
+                coin_symbol: coin_symbol,
+                wallet_address: from_address,
+                tx_id: tx_row_id,
+                coin_id: trx_data?.coin?.coin_id,
+                coin_family: trx_data?.coin.coin_family,
+                tx_type: tx_type,
+                notification_type: trnxTypeW,
+                // state: "confirmed"
+              };
+              utilityHelper.SendNotification(notifData);
             }
-            const notiMsg = trx_data?.coin?.token_type == TokenStandard.ERC721 ?
-              `Deposit of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been confirmed.` : `Deposit of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been confirmed.`;
+            //const Addressdeposit: any = await ethProcessHelper.check_our_wallet_address(to_address);
+            if (addressDeposit) {
+              const to_user_id: number = addressDeposit ? JSON.parse(addressDeposit)?.user_id : 0;
+              /** update to adrs wallet balance */
+              if (to_address !== from_address) {
+                if (tx_type !== TrnxTypeEnum.DAPP) {
+                  if (trx_data.coin?.token_type === null || trx_data.coin?.token_type?.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
+                    const balance: any = await walletHelper.updateBalance(
+                      to_address, /// wallet_address,
+                      trx_data?.coin /// coin
+                    );
+                    await globalHelper.checkCoinInWallet(to_address, trx_data?.coin, balance)
+                  }
+                } else {
+                  await walletHelper.updateAllActiveCoinBalance(to_address, coin_family);
+                }
+              }
+              const notiMsg = trx_data?.coin?.token_type == TokenStandard.ERC721 ?
+                `Deposit of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been confirmed.` : `Deposit of ${await utilityHelper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been confirmed.`;
 
-            const notifData: NotificationInterface = {
-              title: NotificationTypeEnum.DEPOSIT.toUpperCase(),
-              message: notiMsg,
-              amount: amount,
-              from_user_id: user_id,
-              to_user_id: to_user_id,
-              wallet_address: to_address,
-              tx_id: tx_row_id,
-              coin_symbol: coin_symbol,
-              coin_id: trx_data?.coin?.coin_id,
-              coin_family: trx_data?.coin?.coin_family,
-              tx_type: NotificationTypeEnum.DEPOSIT,
-              notification_type: 'Deposit',
-              state: "confirmed"
-            };
-            Utility_Helper.SendNotification(notifData);
+              const notifData: NotificationInterface = {
+                title: NotificationTypeEnum.DEPOSIT.toUpperCase(),
+                message: notiMsg,
+                amount: amount,
+                from_user_id: user_id,
+                to_user_id: to_user_id,
+                wallet_address: to_address,
+                tx_id: tx_row_id,
+                coin_symbol: coin_symbol,
+                coin_id: trx_data?.coin?.coin_id,
+                coin_family: trx_data?.coin?.coin_family,
+                tx_type: NotificationTypeEnum.DEPOSIT,
+                notification_type: 'Deposit',
+                // state: "confirmed"
+              };
+              utilityHelper.SendNotification(notifData);
+            }
+
+            return true;
           }
-
-          return true;
 
         } else if (status_tx == BlockChainStatusEnum.FAILED) {
           let trnxTypeW: string = "Withdraw";
@@ -277,7 +286,7 @@ class EthTxStatusUpdateProcess {
           }
 
           const notiMsg = trx_data?.coin?.token_type == TokenStandard.ERC721 ?
-            `${trnxTypeW} of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been failed.` : `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been failed.`;
+            `${trnxTypeW} of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been failed.` : `${trnxTypeW} of ${await utilityHelper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been failed.`;
 
           const notifData: NotificationInterface = {
             title: trnxTypeW.toUpperCase(),
@@ -292,9 +301,9 @@ class EthTxStatusUpdateProcess {
             coin_family: trx_data?.coin?.coin_family,
             tx_type: tx_type,
             notification_type: trnxTypeW,
-            state: "failed"
+            // state: "failed"
           };
-          Utility_Helper.SendNotification(notifData);
+          utilityHelper.SendNotification(notifData);
 
           return true;
         } else {

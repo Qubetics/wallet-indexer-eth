@@ -1,4 +1,5 @@
-export interface blocks_trnx {
+export interface blocksTrnx {
+    // export interface blocks_trnx {
     block_number: number,
     tx_id: string | '',
     value: string | '',
@@ -9,7 +10,8 @@ export interface blocks_trnx {
     pair: string | null
 }
 
-export interface pending_trnx {
+// export interface pending_trnx {
+    export interface pendingTrnx {
     tx_id: string;
     coin_id: number,
     is_token: boolean,

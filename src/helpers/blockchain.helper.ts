@@ -1,30 +1,29 @@
 import { BooleanEnum, TokenStandard } from "../enum";
-import { Utility_Helper } from "./utility.helper";
+import { utilityHelper } from "./utility.helper";
 import { config } from '../config';
 import { ethers } from 'ethers';
 
-class BlockchainHelper {
+class BlockChainHelper {
     public provider: ethers.JsonRpcProvider;
-  
+
     constructor() {
-      this.provider = new ethers.JsonRpcProvider(config.config.NODE.ETH_RPC_URL || "");
-      this.initialize();
+        this.provider = new ethers.JsonRpcProvider(config.config.NODE.ETH_RPC_URL || "");
+        this.initialize();
     }
-  
-  
-    public initialize() {}
+
+    public initialize() { }
 
     convertWeiToEth = async (value: number | string) => {
         try {
-          const valueAsString = value.toString();
-          return ethers.formatEther(valueAsString);;
+            const valueAsString = value.toString();
+            return ethers.formatEther(valueAsString);;
         } catch (error) {
             console.error(`ConvertWeiToEth error >>`, error);
             return 0;
         }
-      }
-      
-    Fetch_Balance = async (
+    }
+
+    fetchBalance = async (
         address: string,
         coin: any
     ) => {
@@ -32,15 +31,14 @@ class BlockchainHelper {
             let balance: number = 0;
             if (coin.is_token == BooleanEnum.true) {
                 switch (coin.token_type) {
-
                     case TokenStandard.ERC20:
-                        balance = await this.ERC20_Token_Fetch_Balance(
+                        balance = await this.erc20TokenFetchBalance(
                             address, //// wallet_address
                             coin.token_address ? coin.token_address : null/// contract_address
                         )
                         break;
                     case TokenStandard.ERC721:
-                        balance = await this.ERC721_Token_Fetch_Balance(
+                        balance = await this.erc721TokenFetchBalance(
                             address, //// wallet_address
                             coin.token_address ? coin.token_address : null /// contract_address
                         )
@@ -50,7 +48,7 @@ class BlockchainHelper {
                         break;
                 }
             } else {
-                balance = await this.Coin_Fetch_Balance(address);
+                balance = await this.coinFetchBalance(address);
             }
             return balance
         } catch (error: any) {
@@ -59,71 +57,74 @@ class BlockchainHelper {
         }
     }
 
-    public ERC20_Token_Fetch_Balance = async (
+    // public ERC20_Token_Fetch_Balance = async (
+    public erc20TokenFetchBalance = async (
         wallet_address: string,
         contract_address: string | null
     ) => {
         try {
             if (contract_address) {
                 const contract = new ethers.Contract(
-                  contract_address,
-                  config.config.CONTRACT_ABI,
-                  this.provider
+                    contract_address,
+                    config.config.CONTRACT_ABI,
+                    this.provider
                 );
                 const decimals = Number(await contract.decimals())
                 const balance = await contract.balanceOf(wallet_address);
-                const tokenBalance = await Utility_Helper.bigNumberSafeMath(
-                  balance.toString(),
-                  "/",
-                  Math.pow(10, decimals)
+                const tokenBalance = await utilityHelper.bigNumberSafeMath(
+                    balance.toString(),
+                    "/",
+                    Math.pow(10, decimals)
                 );
-                const tokBalance: string = await Utility_Helper.exponentialToDecimal(tokenBalance)
+                const tokBalance: string = await utilityHelper.exponentialToDecimal(tokenBalance)
                 return Number(tokBalance);
-              }
-              return 0;
+            }
+            return 0;
         } catch (error) {
-            console.error(`Eth_Helper ERC20_Token_Fetch_Balance error >>`, error);
+            console.error(`Eth_Helper erc20TokenFetchBalance error >>`, error);
 
             throw error;
         }
     }
 
-    private ERC721_Token_Fetch_Balance = async (
+    // private ERC721_Token_Fetch_Balance = async (
+    private erc721TokenFetchBalance = async (
         wallet_address: string,
         contract_address: string | null
     ) => {
         try {
             if (contract_address) {
                 const contract = new ethers.Contract(
-                contract_address,
-                config.config.ERC721ABI,
-                this.provider
+                    contract_address,
+                    config.config.ERC721ABI,
+                    this.provider
                 );
                 const balance = await contract.balanceOf(wallet_address);
                 return Number(balance.toString());
             }
             return 0;
         } catch (error) {
-            console.error(`Eth_Helper ERC20_Token_Fetch_Balance error >>`, error);
+            console.error(`Eth_Helper erc721TokenFetchBalance error >>`, error);
             throw error;
         }
     }
 
-    public Coin_Fetch_Balance = async (
+    // public Coin_Fetch_Balance = async (
+    public coinFetchBalance = async (
         address: string
     ) => {
         try {
             const balance = await this.provider.getBalance(address);
-            const tokenBalance = await Utility_Helper.bigNumberSafeMath(
+            const tokenBalance = await utilityHelper.bigNumberSafeMath(
                 balance.toString(),
                 "/",
                 Math.pow(10, 18)
             );
-            const coinBalance: string = await Utility_Helper.exponentialToDecimal(tokenBalance)
+            const coinBalance: string = await utilityHelper.exponentialToDecimal(tokenBalance)
             return Number(coinBalance || 0);
-            
+
         } catch (error: any) {
-            console.error(`Eth_Helper Coin_Fetch_Balance error >>`, error);
+            console.error(`Eth_Helper coinFetchBalance error >>`, error);
             throw error;
         }
     }
@@ -131,4 +132,4 @@ class BlockchainHelper {
 
 
 }
-export let Blockchain_Helper = new BlockchainHelper();
+export let blockChainHelper = new BlockChainHelper();
