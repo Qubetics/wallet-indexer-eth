@@ -6,23 +6,100 @@ import ethProcessHelper from "./process.helper";
 import { Op } from "sequelize";
 import { globalHelper } from "../helpers/global.helper";
 import kafkaHelper from "../config/kafka.helper";
-import { pendingTrnx } from "../interfaces/globalHelper";
+import { pendingTrnx, TransactionData, TxUpdateData } from "../interfaces/globalHelper";
 import { ethers, TransactionResponse } from "ethers";
+
 class EthTxStatusUpdateProcess {
 
   public startTxStatusUpdateQueue = async () => {
-    const consumer = await kafkaHelper.kafka.consumer({ groupId: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_GROUP_ID });
-    await consumer.subscribe({ topic: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_TOPIC, fromBeginning: true });
-    await consumer.run({
-      eachMessage: async ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-        console.log("🚀 ~ startTxStatusUpdateQueue topic >>>>", topic);
-        console.log("🚀 ~ startTxStatusUpdateQueue message.value >>>>", message.value.toString());
-        await this.getTx(JSON.parse(message.value.toString()))
+    let consumer: any = null;
+    let isConnected = false;
+
+    const connectConsumer = async () => {
+      try {
+
+        if (consumer) {
+          await consumer.disconnect();
+        }
+
+        consumer = await kafkaHelper.kafka.consumer({
+          groupId: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_GROUP_ID,
+          // Add session timeout for better error handling
+          sessionTimeout: 30000,
+          // Add heartbeat interval
+          heartbeatInterval: 3000,
+        });
+
+        await consumer.subscribe({
+          topic: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_TOPIC,
+          fromBeginning: true, // ✅ Changed to false to prevent reprocessing
+        });
+
+        await consumer.run({
+          // ✅ Add proper autoCommit configuration
+          autoCommit: true,
+          autoCommitInterval: 5000,
+          autoCommitThreshold: 100,
+
+          eachMessage: async ({ topic, partition, message }: { topic: any; partition: any; message: any }) => {
+            try {
+              console.log("🚀 ~ startTxStatusUpdateQueue topic >>>>", topic);
+              console.log("🚀 ~ startTxStatusUpdateQueue message.value >>>>", message.value.toString());
+              await this.getTx(JSON.parse(message.value.toString()))
+
+            } catch (error) {
+              console.error(`❌ Error processing message:`, error);
+            }
+          },
+        });
+        isConnected = true;
+      } catch (error) {
+        console.error(`❌ Failed to connect consumer:`, error);
+        isConnected = false;
+        throw error;
       }
-    }).catch((err: Error) => {
-      console.log("🔥 ~ ~ startTxStatusUpdateQueue error", err);
-    });
+    };
+
+    // ✅ Add reconnection logic
+    const startWithReconnection = async () => {
+      while (true) {
+        try {
+          if (!isConnected) {
+            console.log(`🔄 Attempting to connect consumer startTxStatusUpdateQueue...`);
+            await connectConsumer();
+          }
+
+          // Keep the consumer alive
+          await new Promise(resolve => setTimeout(resolve, 30000));
+
+        } catch (error) {
+          console.error(`❌ Consumer connection error:`, error);
+          isConnected = false;
+
+          // Wait before retrying
+          console.log(`⏳ Waiting 10 seconds before reconnecting...`);
+          await new Promise(resolve => setTimeout(resolve, 10000));
+        }
+      }
+    };
+
+    // Start the consumer with reconnection
+    await startWithReconnection();
   };
+
+  // public startTxStatusUpdateQueue = async () => {
+  //   const consumer = await kafkaHelper.kafka.consumer({ groupId: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_GROUP_ID });
+  //   await consumer.subscribe({ topic: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_TOPIC, fromBeginning: true });
+  //   await consumer.run({
+  //     eachMessage: async ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
+  //       console.log("🚀 ~ startTxStatusUpdateQueue topic >>>>", topic);
+  //       console.log("🚀 ~ startTxStatusUpdateQueue message.value >>>>", message.value.toString());
+  //       await this.getTx(JSON.parse(message.value.toString()))
+  //     }
+  //   }).catch((err: Error) => {
+  //     console.log("🔥 ~ ~ startTxStatusUpdateQueue error", err);
+  //   });
+  // };
 
   public getTx = async (data: pendingTrnx) => {
     console.log('Pending data >>>>>>>', data);
@@ -88,19 +165,7 @@ class EthTxStatusUpdateProcess {
     }
   };
 
-  public sendTxUpdate = async (txData: {
-    coin: {
-      coin_id: number,
-      is_token: boolean,
-      token_type: string | null,
-      token_address: string
-    };
-    status: string;
-    txid: string;
-    gasReverted: number | undefined;
-    fromAddress: string;
-    tx_fee: number
-  }) => {
+  public sendTxUpdate = async (txData: TxUpdateData) => {
     try {
       let coin_data: any = {};
       if (!txData.coin?.is_token) {
@@ -112,7 +177,7 @@ class EthTxStatusUpdateProcess {
         coin_data = await ethProcessHelper.checkIfOurNFTContract(txData.coin.token_address);
       }
       if (coin_data) {
-        const trx_data = {
+        const trx_data: TransactionData = {
           coin_id: txData.coin?.coin_id,
           status: txData?.status,
           txid: txData?.txid,
@@ -121,11 +186,14 @@ class EthTxStatusUpdateProcess {
           fromAddress: txData?.fromAddress,
           coin: {
             coin_id: txData.coin.coin_id,
-            is_token: coin_data.is_token,
-            token_type: coin_data.token_type,
+            coin_name: coin_data.coin_name || '',
             coin_symbol: coin_data.coin_symbol,
             coin_family: coin_data.coin_family,
-            cmc_id: coin_data.cmc_id,
+            coin_status: coin_data.coin_status || 0,
+            is_token: coin_data.is_token,
+            token_type: coin_data.token_type,
+            decimals: coin_data.decimals || 0,
+            // cmc_id: coin_data.cmc_id,
             token_address: Number(coin_data.is_token) === Number(BooleanEnum.true) ? coin_data.token_address : coin_data.coin_symbol,
             added_by: coin_data.added_by
           }
@@ -144,7 +212,7 @@ class EthTxStatusUpdateProcess {
   };
 
   public async updateBroadcastTx(
-    trx_data: any
+    trx_data: TransactionData
   ) {
     const txnData: any = await trnxHistoryModel.findOne({ attributes: ['from_adrs', 'amount', 'user_id', 'id', 'to_adrs', 'type', 'coin_family'], where: { tx_id: trx_data.txid, status: 'completed', [Op.or]: [{ blockchain_status: { [Op.is]: null as any } }, { blockchain_status: 'pending' }] }, raw: true });
     if (txnData) {
@@ -180,7 +248,7 @@ class EthTxStatusUpdateProcess {
               if (tx_type !== TrnxTypeEnum.DAPP) {
                 const native_coin: any = await ethProcessHelper.checkIfContract('NativeCoin');
                 await walletHelper.updateBalance(from_address, native_coin);
-                if (trx_data?.coin?.is_token === BooleanEnum.true && trx_data.coin?.token_type.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
+                if (trx_data?.coin?.is_token === BooleanEnum.true && trx_data.coin?.token_type?.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
                   /** Update User ERC20 Token Balance */
                   await walletHelper.updateBalance(from_address, trx_data?.coin);
                 }

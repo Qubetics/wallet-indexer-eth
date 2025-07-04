@@ -27,30 +27,183 @@ class ProcessedBlockTransactions {
     }
 
     public startBlockTxQueue = async () => {
-        const consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_block_tx_group_id });
-        await consumer.subscribe({ topic: this.eth_block_tx_topic, fromBeginning: true });
+        let consumer: any = null;
+        let isConnected = false;
 
-        await consumer.run({
-            eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-                this.readTrnx(JSON.parse(message.value.toString()))
+        const connectConsumer = async () => {
+            try {
+
+                if (consumer) {
+                    await consumer.disconnect();
+                }
+
+                consumer = await kafkaHelper.kafka.consumer({
+                    groupId: this.eth_block_tx_group_id,
+                    // Add session timeout for better error handling
+                    sessionTimeout: 30000,
+                    // Add heartbeat interval
+                    heartbeatInterval: 3000,
+                });
+
+                await consumer.subscribe({
+                    topic: this.eth_block_tx_topic,
+                    fromBeginning: true, // ✅ Changed to false to prevent reprocessing
+                });
+
+                await consumer.run({
+                    // ✅ Add proper autoCommit configuration
+                    autoCommit: true,
+                    autoCommitInterval: 5000,
+                    autoCommitThreshold: 100,
+
+                    eachMessage: async ({ topic, partition, message }: { topic: any; partition: any; message: any }) => {
+                        try {
+                            console.log("🚀 ~ startBlockTxQueue topic >>>>", topic);
+                            console.log("🚀 ~ startBlockTxQueue message.value >>>>", message.value.toString());
+                            await this.readTrnx(JSON.parse(message.value.toString()))
+
+                        } catch (error) {
+                            console.error(`❌ Error processing message:`, error);
+                        }
+                    },
+                });
+                isConnected = true;
+            } catch (error) {
+                console.error(`❌ Failed to connect consumer:`, error);
+                isConnected = false;
+                throw error;
             }
-        }).catch((err: Error) => {
-            console.log("🔥 ~ startBlockTxQueue consumer error", err);
-        });
+        };
+
+        // ✅ Add reconnection logic
+        const startWithReconnection = async () => {
+            while (true) {
+                try {
+                    if (!isConnected) {
+                        console.log(`🔄 Attempting to connect consumer startBlockTxQueue...`);
+                        await connectConsumer();
+                    }
+
+                    // Keep the consumer alive
+                    await new Promise(resolve => setTimeout(resolve, 30000));
+
+                } catch (error) {
+                    console.error(`❌ Consumer connection error:`, error);
+                    isConnected = false;
+
+                    // Wait before retrying
+                    console.log(`⏳ Waiting 10 seconds before reconnecting...`);
+                    await new Promise(resolve => setTimeout(resolve, 10000));
+                }
+            }
+        };
+
+        // Start the consumer with reconnection
+        await startWithReconnection();
     };
+
+    // public startBlockTxQueue = async () => {
+    //     const consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_block_tx_group_id });
+    //     await consumer.subscribe({ topic: this.eth_block_tx_topic, fromBeginning: true });
+
+    //     await consumer.run({
+    //         eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
+    //             this.readTrnx(JSON.parse(message.value.toString()))
+    //         }
+    //     }).catch((err: Error) => {
+    //         console.log("🔥 ~ startBlockTxQueue consumer error", err);
+    //     });
+    // };
 
     public startBehindBlockTxQueue = async () => {
-        const consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_behind_block_tx_group_id });
-        await consumer.subscribe({ topic: this.eth_behind_block_tx_topic, fromBeginning: true });
+        let consumer: any = null;
+        let isConnected = false;
 
-        await consumer.run({
-            eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-                this.readTrnx(JSON.parse(message.value.toString()))
+        const connectConsumer = async () => {
+            try {
+
+                if (consumer) {
+                    await consumer.disconnect();
+                }
+
+                consumer = await kafkaHelper.kafka.consumer({
+                    groupId: this.eth_behind_block_tx_group_id,
+                    // Add session timeout for better error handling
+                    sessionTimeout: 30000,
+                    // Add heartbeat interval
+                    heartbeatInterval: 3000,
+                });
+
+                await consumer.subscribe({
+                    topic: this.eth_behind_block_tx_topic,
+                    fromBeginning: false, // ✅ Changed to false to prevent reprocessing
+                });
+
+                await consumer.run({
+                    // ✅ Add proper autoCommit configuration
+                    autoCommit: true,
+                    autoCommitInterval: 5000,
+                    autoCommitThreshold: 100,
+
+                    eachMessage: async ({ topic, partition, message }: { topic: any; partition: any; message: any }) => {
+                        try {
+                            console.log("🚀 ~ startBehindBlockTxQueue topic >>>>", topic);
+                            console.log("🚀 ~ startBehindBlockTxQueue message.value >>>>", message.value.toString());
+                            await this.readTrnx(JSON.parse(message.value.toString()))
+
+                        } catch (error) {
+                            console.error(`❌ Error processing message:`, error);
+                        }
+                    },
+                });
+                isConnected = true;
+            } catch (error) {
+                console.error(`❌ Failed to connect consumer:`, error);
+                isConnected = false;
+                throw error;
             }
-        }).catch((err: Error) => {
-            console.log("🔥 ~ startBehindBlockTxQueue consumer error", err);
-        });
+        };
+
+        // ✅ Add reconnection logic
+        const startWithReconnection = async () => {
+            console.log('isConnected >>>', isConnected);
+            while (true) {
+                try {
+                    if (!isConnected) {
+                        console.log(`🔄 Attempting to connect consumer startBehindBlockTxQueue...`);
+                        await connectConsumer();
+                    }
+
+                    // Keep the consumer alive
+                    await new Promise(resolve => setTimeout(resolve, 30000));
+
+                } catch (error) {
+                    console.error(`❌ Consumer connection error:`, error);
+                    isConnected = false;
+
+                    // Wait before retrying
+                    console.log(`⏳ Waiting 10 seconds before reconnecting...`);
+                    await new Promise(resolve => setTimeout(resolve, 10000));
+                }
+            }
+        };
+
+        // Start the consumer with reconnection
+        await startWithReconnection();
     };
+
+    // public startBehindBlockTxQueue = async () => {
+    //     const consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_behind_block_tx_group_id });
+    //     await consumer.subscribe({ topic: this.eth_behind_block_tx_topic, fromBeginning: true });
+
+    //     await consumer.run({
+    //         eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
+    //             this.readTrnx(JSON.parse(message.value.toString()))
+    //         }
+    //     }).catch((err: Error) => {
+    //         console.log("🔥 ~ startBehindBlockTxQueue consumer error", err);
+    //     });
+    // };
     public async readTrnx(data: blocksTrnx) {
         try {
             const txReceipt: TransactionReceipt | null = await blockChainHelper.provider.getTransactionReceipt(data.tx_id);
