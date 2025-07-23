@@ -9,6 +9,7 @@ class ETHStartProcess {
     this.getPendingWithdrawalTxProcess();
     this.updateTxStatusProcess();
     this.ETHUpdateBalance();
+    this.EthUpdateBalanceByWallet()
     // this.testing_node()
   }
   public read_block_process() {
@@ -52,6 +53,15 @@ class ETHStartProcess {
     setTimeout(async () => {
       await ETH_balance_update.default.update_wallet_balance();
     }, 10000);
+  }
+
+  public async EthUpdateBalanceByWallet() {
+    schedule.scheduleJob("*/5 * * * *", async function () {
+    //for testing 10 seconds
+      // schedule.scheduleJob("*/50 * * * * *", async function () {
+      // console.log("Runing  updateWalletBalanceByWallet")
+      await ETH_balance_update.default.updateWalletBalanceByWallet();
+    });
   }
 }
 
