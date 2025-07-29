@@ -46,7 +46,7 @@ class GlobalHelper {
                     coin_id: coin.coin_id,
                     coin_family: coin.coin_family,
                     balance: balance !== null ? balance : 0,
-                    default_wallet: 1,
+                    // default_wallet: 1,
                     status: 1
                 };
 

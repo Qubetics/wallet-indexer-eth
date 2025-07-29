@@ -216,7 +216,7 @@ class ProcessedBlockTransactions {
             if (txReceipt?.status == 0) {
                 console.log("(txReceipt.status === false && txReceipt !== null")
             } else if (txReceipt) {
-                await this.buildTx(txReceipt, data)
+                this.buildTx(txReceipt, data)
             }
         } catch (error: any) {
             console.error("Error in read_trnx>>>", error)

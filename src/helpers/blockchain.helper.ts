@@ -28,7 +28,7 @@ class BlockChainHelper {
         coin: any
     ) => {
         try {
-            let balance: number = 0;
+            let balance: number | null = null;
             if (coin.is_token == BooleanEnum.true) {
                 switch (coin.token_type) {
                     case TokenStandard.ERC20:
@@ -79,7 +79,7 @@ class BlockChainHelper {
                 const tokBalance: string = await utilityHelper.exponentialToDecimal(tokenBalance)
                 return Number(tokBalance);
             }
-            return 0;
+            return null;
         } catch (error) {
             console.error(`Eth_Helper erc20TokenFetchBalance error >>`, error);
 

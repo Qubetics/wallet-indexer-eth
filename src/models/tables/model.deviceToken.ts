@@ -65,6 +65,6 @@ let dataObjIndex = {
   ],
 };
 
-const DeviceTokenModel = db.db_write.define<DeviceTokenInstance>("deviceTokens", dataObj, dataObjIndex);
+const DeviceTokenModel = db.db_write.define<DeviceTokenInstance>("device_token", dataObj, dataObjIndex);
 
 export default DeviceTokenModel;
