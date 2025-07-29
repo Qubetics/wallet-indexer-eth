@@ -141,14 +141,14 @@ class EthDepositWithdrawProcess {
       if (tx_type !== TrnxTypeEnum.WITHDRAW && checkOldTrnx && checkOldTrnx.tx_id == tx_hash) {
         tx_type = checkOldTrnx.type;
       }
-      let AddressWithdraw: any = await ethProcessHelper.check_our_wallet_address(from_address);
-      let Addressdeposit: any = await ethProcessHelper.check_our_wallet_address(to_address);
+      const AddressWithdraw: any = await ethProcessHelper.check_our_wallet_address(from_address);
+      const Addressdeposit: any = await ethProcessHelper.check_our_wallet_address(to_address);
 
 
-      let user_id: number = AddressWithdraw ? AddressWithdraw.user_id : 0;
-      let to_user_id: number = Addressdeposit ? Addressdeposit.user_id : 0;
+      const user_id: number = AddressWithdraw ? AddressWithdraw.user_id : 0;
+      const to_user_id: number = Addressdeposit ? Addressdeposit.user_id : 0;
 
-      let trx_data: any = {
+      const trx_data: any = {
         user_id: user_id,
         to_user_id: to_user_id,
         req_type: TxReqTypesEnum.EXNG,
@@ -172,20 +172,20 @@ class EthDepositWithdrawProcess {
 
         if (coin?.token_type === null || coin?.token_type.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
           /** update to adrs wallet balance */
-          let balance: any = await Wallet_Helper.Update_Balance(
+          const balance: any = await Wallet_Helper.Update_Balance(
             to_address, /// wallet_address,
             coin /// coin
           );
           await global_helper.check_coin_in_wallet(to_address, coin, balance)
         }
 
-        let notiMsg = coin?.token_type == TokenStandard.ERC721 ?
+        const notiMsg = coin?.token_type == TokenStandard.ERC721 ?
           `Deposit of NFT(${coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` :
           `${trnxTypeD} of ${await Utility_Helper.bigNumberSafeConversion(
             amount
           )} ${coin?.coin_symbol?.toUpperCase()} has been confirmed.`;
 
-        let notifData: NotificationInterface = {
+        const notifData: NotificationInterface = {
           title: trnxTypeD?.toUpperCase(),
           message: notiMsg,
           amount: amount,
@@ -217,7 +217,7 @@ class EthDepositWithdrawProcess {
             trnxTypeW = "Swap";
             break;
           case TrnxTypeEnum.CROSS_CHAIN:
-            trnxTypeW = "Cross-chain Swap";
+            trnxTypeW = "Cross Chain Swap";
             break;
           default:
             break;
@@ -237,7 +237,7 @@ class EthDepositWithdrawProcess {
           );
         }
 
-        let notiMsg = coin?.token_type == TokenStandard.ERC721 ? `${trnxTypeW} request of NFT(${coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
+        let notiMsg = coin?.token_type == TokenStandard.ERC721 ? `${trnxTypeW} of NFT(${coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` : `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
 
         let notifData: NotificationInterface = {
           title: trnxTypeW?.toUpperCase(),

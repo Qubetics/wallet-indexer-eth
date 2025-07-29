@@ -192,13 +192,13 @@ class EthTxStatusUpdateProcess {
                 trnxTypeW = "Swap";
                 break;
               case TrnxTypeEnum.CROSS_CHAIN:
-                trnxTypeW = "Cross chain Swap";
+                trnxTypeW = "Cross Chain Swap";
                 break;
               default:
                 break;
             }
             const notiMsg = trx_data.coin?.token_type == TokenStandard.ERC721 ?
-              `${trnxTypeW} request of NFT(${coin_symbol.toUpperCase()} ) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin_symbol.toUpperCase()} has been confirmed.`;
+              `${trnxTypeW} of NFT(${coin_symbol.toUpperCase()} ) with token id ${amount} has been confirmed.` : `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin_symbol.toUpperCase()} has been confirmed.`;
 
             const notifData: NotificationInterface = {
               title: trnxTypeW.toUpperCase(),
@@ -270,7 +270,7 @@ class EthTxStatusUpdateProcess {
               trnxTypeW = "Swap";
               break;
             case TrnxTypeEnum.CROSS_CHAIN:
-              trnxTypeW = "Cross chain Swap";
+              trnxTypeW = "Cross Chain Swap";
               break;
             default:
               break;
