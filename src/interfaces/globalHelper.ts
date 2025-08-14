@@ -9,7 +9,9 @@ export interface blocksTrnx {
     toAddress: string | '',
     retry_count: number,
     key: string | null,
-    pair: string | null
+    pair: string | null,
+    gasUsed: number | null,
+    gasPrice: number | null
 }
 
 // export interface pending_trnx {

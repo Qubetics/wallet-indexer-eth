@@ -9,6 +9,7 @@ import { globalHelper } from "../helpers/global.helper";
 import kafkaHelper from "../config/kafka.helper";
 import { ethers, TransactionReceipt } from "ethers";
 import { TxType } from "../types/ERC20Tokens.types";
+import { BigNumber } from "bignumber.js";
 
 
 class EthBlockProcess {
@@ -38,6 +39,7 @@ class EthBlockProcess {
     public async readCurrentBlocks() {
         try {
             const results = await ethProcessHelper.getMultipleKeyValuePairs(config.REDISKEYS.ETH_BLOCKS, [config.REDISKEYS.OLD_BLOCK_ETH, config.REDISKEYS.NEW_BLOCK_ETH]);
+            console.log("🚀 ~ EthBlockProcess ~ readCurrentBlocks ~ results:", results)
 
             // Validate results array
             if (!Array.isArray(results) || results.length < 2) {
@@ -157,70 +159,64 @@ class EthBlockProcess {
 
     public getTraceBlock = async (blockId: number, key: string) => {
         try {
+            console.log("INSIDE getTraceBlock",blockId)
             const hexBlockValue = ethers.toBeHex(blockId.toString());
             const formattedBlockValue = hexBlockValue.replace(/^0x0+/g, '0x');
-            const response = await blockChainHelper.provider.send("trace_block", [formattedBlockValue]);
+            const response = await blockChainHelper.provider.send("debug_traceBlockByNumber", [formattedBlockValue,
+                {
+                    "tracer": "callTracer"
+                }]);
     
             if (response?.length > 0) {
                 const traces = response;
                 // Loop through the traces and identify transaction types
                 for (const trace of traces) {
-                    // Process main trace
-                    const bigInitValue: BigInt | string = (trace.value === "0x0" || trace.value === "0n" || trace.value == null) ? "0" : ethers.toBigInt(trace.value);
+                    // Process main trace 
+                    const bigInitValue: BigInt | string = (trace?.result?.value === "0x0" || trace?.result?.value === "0n" || trace?.result?.value == null) ? "0" : ethers.toBigInt(trace?.result?.value);
                     const value: BigNumber = new BigNumber(bigInitValue.toString());
-    
                     // Identify COIN transactions (typically Ether transfers)
                     if (value.gt(0)) {
-                        const blockTxnData: any = {
-                            txn_hash: trace.transactionHash,
-                            from_address: trace.from,
-                            to_address: trace.to,
-                            value: value,
-                            block_number: trace.blockNumber,
-                        };
-    
-                        const bigInitGasUsed: BigInt | string = (trace.gasUsed === "0x0" || trace.gasUsed === "0n" || trace.gasUsed == null) ? "0" : ethers.toBigInt(trace.gasUsed);
-                        const gasUsed: BigNumber = new BigNumber(bigInitGasUsed.toString());
+                        const bigInitGasUsed: BigInt | string = (trace?.result?.gasUsed === "0x0" || trace?.result?.gasUsed === "0n" || trace?.result?.gasUsed == null) ? "0" : ethers.toBigInt(trace?.result?.gasUsed);
+                        const gasPrice: BigInt | string = (trace?.result?.gas === "0x0" || trace?.result?.gas === "0n" || trace?.result?.gas == null) ? "0" : ethers.toBigInt(trace?.result?.gas);
     
                         const txReceipt: any = {
+                            tx_id: trace.txHash,
+                            fromAddress: trace?.result?.from,
+                            toAddress: trace?.result?.to,
+                            value: value.toString(),
                             status: trace?.error ? false : true,
-                            gasUsed: Number(gasUsed.toString()),
-                            effectiveGasPrice: 0,
-                            blockHash: trace.blockHash,
+                            gasUsed: Number(bigInitGasUsed.toString()),
+                            gasPrice: Number(gasPrice.toString()),
+                            blockHash: trace?.blockHash || '',
                         }
     
-                        await this.checkEthDeposit(txReceipt, blockTxnData);
-                    }
-    
+                        await this.checkEthDeposit(txReceipt);
+                    }    
                     // Process calls with non-zero value
-                    if (trace.calls && trace.calls.length > 0) {
-                        for (const call of trace.calls) {
+                    else if (trace?.result?.calls && trace?.result?.calls.length > 0) {
+                        for (const call of trace?.result?.calls) {
                             const callBigInitValue: BigInt | string = (call.value === "0x0" || call.value === "0n" || call.value == null) ? "0" : ethers.toBigInt(call.value);
                             const callValue: BigNumber = new BigNumber(callBigInitValue.toString());
                             
                             // Only process calls with non-zero value
                             if (callValue.gt(0)) {
-                                const callBlockTxnData: any = {
-                                    txn_hash: trace.transactionHash,
-                                    from_address: call.from,
-                                    to_address: call.to,
-                                    value: callValue,
-                                    block_number: trace.blockNumber,
-                                };
-    
-                                const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
-                                const callGasUsed: BigNumber = new BigNumber(callBigInitGasUsed.toString());
-    
-                                const callTxReceipt: any = {
-                                    status: call?.error ? false : true,
-                                    gasUsed: Number(callGasUsed.toString()),
-                                    effectiveGasPrice: 0,
-                                    blockHash: trace.blockHash,
-                                }
-    
-                                await this.checkEthDeposit(callTxReceipt, callBlockTxnData);
+                            const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
+                            const gasPrice: BigInt | string = (call.gas === "0x0" || call.gas === "0n" || call.gas == null) ? "0" : ethers.toBigInt(call.gas);
+
+                            const callTxReceipt: any = {
+                                tx_id: trace.txHash,
+                                fromAddress: call.from,
+                                toAddress: call.to,
+                                value: callValue.toString(),
+                                status: call?.error ? false : true,
+                                gasUsed: Number(callBigInitGasUsed.toString()),
+                                gasPrice: Number(gasPrice.toString()),
+                                blockHash: trace.blockHash,
                             }
+
+                            await this.checkEthDeposit(callTxReceipt);
                         }
+                    }
                     }
                 }
             } else {
@@ -233,6 +229,7 @@ class EthBlockProcess {
     
     public getBlockReceipts = async (blockId: number, key: string) => {
         try {
+            console.log("INSIDE getBlockReceipts")
             // Get block receipts
             const blockReceipts = await this.fetchBlockReceipts(blockId);
             if (!blockReceipts) {
@@ -264,7 +261,7 @@ class EthBlockProcess {
             return;
         }
     
-        const gasInfo = this.extractGasInfo(txReceipt);
+        const gasInfo =await this.extractGasInfo(txReceipt);
         const processedTokens = new Set<string>(); // Track processed NFT tokens per transaction
     
         for (const log of txReceipt.logs) {
@@ -286,27 +283,26 @@ class EthBlockProcess {
     };
 
     private processLog = async (log: any, gasInfo: any, processedTokens: Set<string>) => {
-        const nftInfo = await ethProcessHelper.checkIfOurNFTContract(log.address);
-        if (this.isNFTTransfer(log, nftInfo)) {
+        const contractInfo = await ethProcessHelper.checkIfContract(log.address);
+        if (this.isTokenTransfer(log, contractInfo)) {
+            await this.processTokenTransfer(log, gasInfo, contractInfo);
+        }
+        else{ 
+            const nftInfo = await ethProcessHelper.checkIfOurNFTContract(log.address)
+            if (this.isNFTTransfer(log, nftInfo)) {
             await this.processNFTTransfer(log, gasInfo, nftInfo, processedTokens);
             return;
-        } 
-        else{
-            const contractInfo = await ethProcessHelper.checkIfContract(log.address);
-            if (this.isTokenTransfer(log, contractInfo)) {
-                await this.processTokenTransfer(log, gasInfo, contractInfo);
-            }
-        }
+        }}
     };
     
     private isNFTTransfer = (log: any, nftInfo: any): boolean => {
-        return Object.keys(nftInfo)?.length > 0 && 
+        return nftInfo && Object.keys(nftInfo)?.length > 0 && 
                log.topics[1] !== undefined && 
                log.topics[2] !== undefined;
     };
     
     private isTokenTransfer = (log: any, contractInfo: any): boolean => {
-        return Object.keys(contractInfo)?.length > 0 && 
+        return contractInfo && Object.keys(contractInfo)?.length > 0 && 
                log.topics[2] !== undefined &&
                !this.isExcludedTopic(log.topics[0]);
     };
@@ -390,16 +386,15 @@ class EthBlockProcess {
         const decimalPrecision = decimals.toString().length - 1;
         return await utilityHelper.bigNumberSafeMath(data, '/', Math.pow(10, decimalPrecision));
     };
-        public async checkEthDeposit(data: blocksTrnx, txReceipt: TransactionReceipt) {
+        public async checkEthDeposit(data: blocksTrnx) {
             try {
                 /** for check the eth deposit */
                 if (
                     data.value !== '0' &&
-                    data.toAddress &&
-                    data.block_number
+                    data.toAddress
                 ) {
-                    const gasUsed = txReceipt.gasUsed ? txReceipt.gasUsed : 0;
-                    const effectiveGasPrice: number = Number(txReceipt.gasPrice) || 0;
+                    const gasUsed = data.gasUsed ? data.gasUsed : 0;
+                    const effectiveGasPrice: number = Number(data.gasPrice) || 0;
                     const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice);
                     const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
     
@@ -418,6 +413,8 @@ class EthBlockProcess {
                         trnx_fee: Number(gasInEth)
                     };
                     await this.checkAddressInDB(txData);
+                }else{
+                    console.log("else block checkEthDeposit")
                 }
             } catch (error: any) {
                 console.error("💥 ~ ~ check_eth_deposit error", (error as Error).message);
@@ -427,12 +424,12 @@ class EthBlockProcess {
         }
     public async checkAddressInDB(txData: TxType) {
         try {
+            console.log("INSIDE checkAddressInDB")
             // let ourTrnx: any = null;
             const addresses = [txData.fromAddress, txData.toAddress].filter(Boolean);
 
             if (addresses.length > 0) {
                 const results = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
-
                 if (results) {
                     const [withdrawTx, depositTx] = results as string[];
                     if (depositTx) {
