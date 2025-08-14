@@ -1,13 +1,14 @@
 import kafkaHelper from "./config/kafka.helper";
-import { ethWithdrawDepositProcess, ethPendingWithdrawalProcess, ethTxStatusUpdateProcess, ethBlocksProcess, processedBlockTransactions, updateBalanceProcess } from "./processes/index.process"
+// import { ethWithdrawDepositProcess, ethPendingWithdrawalProcess, ethTxStatusUpdateProcess, ethBlocksProcess, processedBlockTransactions, updateBalanceProcess } from "./processes/index.process"
+import { ethWithdrawDepositProcess, ethPendingWithdrawalProcess, ethTxStatusUpdateProcess, ethBlocksProcess, updateBalanceProcess } from "./processes/index.process"
 import schedule from "node-schedule";
 class ETHStartProcess {
   constructor() {
     this.connectKafka();
     this.readBlockProcess();
     this.readSpecificBlock();
-    this.consumeBlockTxQueue();
-    this.consumeBehindBlockTxQueue();
+    // this.consumeBlockTxQueue();
+    // this.consumeBehindBlockTxQueue();
     this.consumeWithdrawDepositTxsQueue();
     this.internalTxsInQueue();
     this.consumeInternalTxQueue();
@@ -34,17 +35,17 @@ class ETHStartProcess {
       await ethBlocksProcess.readSpecificBlock();
     })
   }
-  public consumeBlockTxQueue() {
-    setTimeout(async () => {
-      await processedBlockTransactions.startBlockTxQueue();
+  // public consumeBlockTxQueue() {
+  //   setTimeout(async () => {
+  //     await processedBlockTransactions.startBlockTxQueue();
 
-    }, 10000);
-  }
-  public consumeBehindBlockTxQueue() {
-    setTimeout(async () => {
-      await processedBlockTransactions.startBehindBlockTxQueue();
-    }, 10000);
-  }
+  //   }, 10000);
+  // }
+  // public consumeBehindBlockTxQueue() {
+  //   setTimeout(async () => {
+  //     await processedBlockTransactions.startBehindBlockTxQueue();
+  //   }, 10000);
+  // }
   public async consumeWithdrawDepositTxsQueue() {
     setTimeout(async () => {
       await ethWithdrawDepositProcess.startDepositQueue();
