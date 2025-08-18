@@ -156,7 +156,14 @@ class EthDepositWithdrawProcess {
       const coin: CoinInterface = trnx_data.coin;
       const amount: number = trnx_data.amount;
       const status: string = trnx_data.status;
-      const block_number: number = trnx_data.block_id;
+      let block_number: number;
+      if (typeof trnx_data?.block_id === "string" && trnx_data?.block_id.startsWith("0x")) {
+        // convert hex string → decimal
+        block_number = parseInt(trnx_data.block_id, 16);
+      } else {
+        // already a number or decimal string
+        block_number = Number(trnx_data?.block_id);
+      }
       const blockchain_status: BlockChainStatusEnum = trnx_data.blockchain_status;
       const trnx_fee: any = trnx_data.trnx_fee ? trnx_data.trnx_fee : 0;
       let tx_type: TrnxTypeEnum = trnx_data.txType ? trnx_data.txType : TrnxTypeEnum.DEPOSIT;
