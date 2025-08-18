@@ -4,10 +4,9 @@ import ethProcessHelper from "./process.helper";
 import { KEYS, TrnxTypeEnum } from "../enum";
 import { blocksTrnx } from "../interfaces/globalHelper";
 import { ethOldBLockModel } from "../models";
-// import { Op } from "sequelize";
 import { globalHelper } from "../helpers/global.helper";
 import kafkaHelper from "../config/kafka.helper";
-import { ethers, TransactionReceipt } from "ethers";
+import { ethers } from "ethers";
 import { TxType } from "../types/ERC20Tokens.types";
 import { BigNumber } from "bignumber.js";
 
@@ -139,7 +138,7 @@ class EthBlockProcess {
     }
     public async readSpecificBlock() {
         try {
-            console.log("Entere into readSpecificBlock>>>")
+            console.log("Enter into readSpecificBlock>>>")
             const specificBlocks: any = await ethProcessHelper.getKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.SPECIFIC_BLOCK_ETH)
             const specific_block: any = JSON.parse(specificBlocks);
             if (specific_block && Number(specific_block) > 0) {
