@@ -8,6 +8,7 @@ import { TokenStandard } from "../enum";
 import { globalHelper } from "../helpers/global.helper";
 import { blockChainHelper } from "../helpers";
 import { Op } from "sequelize";
+import kafkaHelper from "../config/kafka.helper";
 
 class EthProcessHelper {
   public CoinsInterface: CoinInterface[];
@@ -359,24 +360,10 @@ class EthProcessHelper {
       //will  be  updated  later 
       let swapSupported: number = 0;
 
-      let image: any = null;
-      let cmcId: number | null = null;
       let graphSource: string | null = null;
       let graphPair: string | null = null;
 
       if (tokenAddress && symbol) {
-
-        const cmcPayload: any = {
-          symbol: symbol,
-          coinFamily: coinFamily,
-          tokenAddress: tokenAddress,
-        }
-        /// remove this added through cron job
-        const cmc_data: any = await globalHelper.getTokenImageFromCmcBySymbol(cmcPayload);
-
-        console.log("this is the cmc_data >>>", cmc_data);
-        cmcId = cmc_data ? cmc_data.id : 0;
-        image = cmc_data ? cmc_data.image : null;
         // remove this added through the cron job
         const tradingViewData = await globalHelper.getTradingSource(symbol);
         console.log("tradingViewData >>>", tradingViewData);
@@ -385,21 +372,16 @@ class EthProcessHelper {
           graphPair = tradingViewData.graphPair;
         }
       }
-      console.log("coinZone>>>", image, "token_type>>", image);
-
-      if (cmcId == null) {
-        cmcId = 0;
-      }
 
       const coinData: any = {
         coin_name: name,
         coin_symbol: symbol.toUpperCase(),
-        coin_image: image,
-        cmc_id: cmcId,
+        coin_image: null,
+        cmc_id: 0,
         coin_family: coinFamily,
         coin_status: 1,
         is_token: 1,
-        is_on_cmc: cmcId > 0 ? 1 : 0,
+        is_on_cmc: 1,
         for_swap: swapSupported,
         added_by: "user",
         token_type: tokenType.toUpperCase(),
@@ -448,8 +430,6 @@ class EthProcessHelper {
   public async insertTokenAddressInDB(tokenAddress: string, tokenDetail: any, nativeWalletData: any) {
     try {
       console.log("data in insertTokenAddressInDB", nativeWalletData)
-      const walletName = nativeWalletData.wallet_name;
-      const walletAddress = nativeWalletData.address;
       const userId = nativeWalletData.user_id;
       const coinFamily = config.STATIC_COIN_FAMILY.ETH;
       const tokenType = TokenStandard.ERC20;
@@ -482,26 +462,11 @@ class EthProcessHelper {
         };
 
         //Todo : Need  to confirm from barjinder sir  if we need to produce message to kafka or not 
-        await kafka_helper.produceMessage(
+        await kafkaHelper.produceMessage(
           config.MORALIS_TRADINGVIEW_TOPIC,
           redisTokenData
         );
       }
-
-
-      //create wallet for coin  :: need to confirm from barjinder sir  if  needed  or not 
-      //no need this please remove this. this work done by checkCoinInWallet this function
-      const message: string = await globalHelper.createWalletForCoin(
-        walletAddress,
-        coinData.coin_id,
-        walletName,
-        userId,
-        coinFamily,
-        currentUTCDate,
-        tokenAddress,
-        1,
-        tokenType
-      );
 
       return coinData;
 
@@ -509,9 +474,6 @@ class EthProcessHelper {
       console.error(`insertTokenAddressInDB >>>`, error);
       return null;
     }
-
-
-
 
   }
 

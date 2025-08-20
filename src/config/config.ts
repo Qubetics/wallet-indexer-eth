@@ -16,6 +16,8 @@ export const config = {
   ETH_NFT: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.TOKEN_TYPE_ETH_NFT}`,
   STATIC_COIN_FAMILY: zookeeperConfig.config.STATIC_COIN_FAMILY,
 
+  MORALIS_TRADINGVIEW_TOPIC: zookeeperConfig.config.MORALIS_TRADING_VIEW_TOPIC,
+
   ETH_GAS_FEE_URL : zookeeperConfig.config.ETH.GAS_FEE_URL || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=",
   ETH_GAS_FEE_API_KEY : zookeeperConfig.config.ETH.GAS_FEE_API_KEY || "api_key",
    
