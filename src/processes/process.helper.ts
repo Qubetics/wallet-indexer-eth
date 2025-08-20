@@ -343,16 +343,15 @@ class EthProcessHelper {
       return null;
     }
   }
-   
 
-  public async addCoinToTable(
+
+  private async addCoinToTable(
     tokenAddress: string,
     symbol: string,
     name: string,
     coinFamily: number,
     tokenType: string,
     decimals: any,
-    lang: any,
     currentUTCDate: any,
     userId: number
   ) {
@@ -366,17 +365,19 @@ class EthProcessHelper {
       let graphPair: string | null = null;
 
       if (tokenAddress && symbol) {
-        
+
         const cmcPayload: any = {
           symbol: symbol,
           coinFamily: coinFamily,
           tokenAddress: tokenAddress,
         }
+        /// remove this added through cron job
         const cmc_data: any = await globalHelper.getTokenImageFromCmcBySymbol(cmcPayload);
 
         console.log("this is the cmc_data >>>", cmc_data);
         cmcId = cmc_data ? cmc_data.id : 0;
         image = cmc_data ? cmc_data.image : null;
+        // remove this added through the cron job
         const tradingViewData = await globalHelper.getTradingSource(symbol);
         console.log("tradingViewData >>>", tradingViewData);
         if (tradingViewData.status) {
@@ -385,12 +386,12 @@ class EthProcessHelper {
         }
       }
       console.log("coinZone>>>", image, "token_type>>", image);
-       
-      if(cmcId == null){
+
+      if (cmcId == null) {
         cmcId = 0;
       }
 
-      let coinData: any = {
+      const coinData: any = {
         coin_name: name,
         coin_symbol: symbol.toUpperCase(),
         coin_image: image,
@@ -410,7 +411,7 @@ class EthProcessHelper {
         graph_source: graphSource,
         is_on_trading_view: graphSource ? 1 : 0,
       };
-      let response: any = await globalHelper.coinCreate(coinData);
+      const response: any = await globalHelper.coinCreate(coinData);
       console.log("🚀 ~ processHelper ~ response:", response)
 
       coinData.coin_id = response.coin_id;
@@ -425,7 +426,7 @@ class EthProcessHelper {
         added_by: coinData.added_by,
         for_swap: coinData.for_swap
       }
-      
+
       //update  token in redis hash 
       await globalHelper.updateTokenInRedisHash(redisCoinData);
       //insert token in custom token table 
@@ -433,8 +434,7 @@ class EthProcessHelper {
         coin_id: coinData.coin_id,
         user_id: userId,
       });
-      
-      return { coinData: coinData };
+      return redisCoinData;
     } catch (err: any) {
       console.error("Error in add_coin_to_table>>", err);
       await globalHelper.saveErrorLogs("add_coin_to_table", err.message);
@@ -443,115 +443,72 @@ class EthProcessHelper {
   }
 
 
-  public async parsePossiblyQuotedNumber(value: any) {
+
+
+  public async insertTokenAddressInDB(tokenAddress: string, tokenDetail: any, nativeWalletData: any) {
     try {
-      if (typeof value === 'string') {
-        // Check if it's a stringified number with quotes inside (e.g. "\"18\"")
-        if (/^"\d+(\.\d+)?"$/.test(value)) {
-          const innerValue = JSON.parse(value); // => "18"
-          return Number(innerValue);            // => 18
-        }
-
-        // Handle direct number strings like "18"
-        if (/^\d+(\.\d+)?$/.test(value)) {
-          return Number(value);
-        }
-      }
-
-      // If it's already a number, return it
-      if (typeof value === 'number') {
-        return value;
-      }
-    } catch (error) {
-      console.error("Failed to parse value:", value, error);
-    }
-
-    return null; // fallback if not parsable
-  }
-  
-  public async insertTokenAddressInDB(token_address: string, data: any) {
-   try {
-        console.log("data in insertTokenAddressInDB", data)
-        const walletName = data.wallet_name;
-        const walletAddress = data.address;
-        const userId = data.user_id;
-        const coinFamily = config.STATIC_COIN_FAMILY.ETH;
-        const tokenType = TokenStandard.ERC20;
-        const decimals = "18";
-        const parseDecimals = await this.parsePossiblyQuotedNumber(decimals);
-        const currentUTCDate: string = new Date()
+      console.log("data in insertTokenAddressInDB", nativeWalletData)
+      const walletName = nativeWalletData.wallet_name;
+      const walletAddress = nativeWalletData.address;
+      const userId = nativeWalletData.user_id;
+      const coinFamily = config.STATIC_COIN_FAMILY.ETH;
+      const tokenType = TokenStandard.ERC20;
+      const decimals = tokenDetail.decimals;
+      const symbol = tokenDetail.symbol;
+      const name = tokenDetail.name;
+      const currentUTCDate: string = new Date()
         .toISOString()
         .replace(/T/, " ")
         .replace(/\..+/, "");
 
-        //need to get symbol and name from cmc based on token address
-      
-        let params: any = `info?address=${token_address}`;
-        let result: any = await globalHelper.cmcApi(params);
+      const coinData: any = await this.addCoinToTable(
+        tokenAddress,
+        symbol,
+        name,
+        coinFamily,
+        tokenType,
+        decimals,
+        currentUTCDate,
+        userId
+      );
 
-        // The CMC API returns an object with keys as IDs, so get the first key
-        const cmcDataObj = result?.data?.data;
-        let symbol = null;
-        let name = null;
-
-        if (cmcDataObj && typeof cmcDataObj === 'object') {
-          const firstKey = Object.keys(cmcDataObj)[0];
-          const cmcData = cmcDataObj[firstKey];
-          symbol = cmcData?.symbol || null;
-          name = cmcData?.name || null;
-        }
-        
-        let coinData;
-
-
-        const response: any = await this.addCoinToTable(
-          token_address,
-          symbol,
-          name,
-          coinFamily,
-          tokenType,
-          parseDecimals,
-          "en",
-          currentUTCDate,
-          userId
-        );
-        coinData = response.coinData;
 
       if (
-        coinFamily == config.STATIC_COIN_FAMILY.ETH 
+        coinFamily == config.STATIC_COIN_FAMILY.ETH
       ) {
         const redisTokenData: any = {
           coin_family: coinFamily,
-          token_address: token_address,
+          token_address: tokenAddress,
         };
-         
+
         //Todo : Need  to confirm from barjinder sir  if we need to produce message to kafka or not 
-        // await kafka_helper.produceMessage(
-        //   config.MORALIS_TRADINGVIEW_TOPIC,
-        //   redisTokenData
-        // );
+        await kafka_helper.produceMessage(
+          config.MORALIS_TRADINGVIEW_TOPIC,
+          redisTokenData
+        );
       }
-      
+
 
       //create wallet for coin  :: need to confirm from barjinder sir  if  needed  or not 
+      //no need this please remove this. this work done by checkCoinInWallet this function
       const message: string = await globalHelper.createWalletForCoin(
         walletAddress,
         coinData.coin_id,
         walletName,
         userId,
         coinFamily,
-        "en",
         currentUTCDate,
-        token_address,
+        tokenAddress,
         1,
         tokenType
       );
 
-      return { status: true, message: message };
-     
-   } catch (error) {
-    console.error(`insertTokenAddressInDB >>>`, error);
-   }
+      return coinData;
+
+    } catch (error) {
+      console.error(`insertTokenAddressInDB >>>`, error);
+      return null;
+    }
 
 
 

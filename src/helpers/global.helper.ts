@@ -560,7 +560,6 @@ public async createWalletForCoin(
     walletName: string,
     userId: number,
     coinFamily: number,
-    lang: string,
     currentUTCDate: any,
     tokenAddress: string,
     isToken: number,

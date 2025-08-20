@@ -9,6 +9,8 @@ import kafkaHelper from "../config/kafka.helper";
 import { ethers } from "ethers";
 import { TxType } from "../types/ERC20Tokens.types";
 import { BigNumber } from "bignumber.js";
+import { ethEther } from "../helpers/ether_eth_helpers";
+import { TokenData } from "../interfaces/ether.interface";
 
 
 class EthBlockProcess {
@@ -158,14 +160,14 @@ class EthBlockProcess {
 
     public getTraceBlock = async (blockId: number, key: string) => {
         try {
-            console.log("INSIDE getTraceBlock",blockId)
+            console.log("INSIDE getTraceBlock", blockId)
             const hexBlockValue = ethers.toBeHex(blockId.toString());
             const formattedBlockValue = hexBlockValue.replace(/^0x0+/g, '0x');
             const response = await blockChainHelper.provider.send("debug_traceBlockByNumber", [formattedBlockValue,
                 {
                     "tracer": "callTracer"
                 }]);
-    
+
             if (response?.length > 0) {
                 const traces = response;
                 // Loop through the traces and identify transaction types
@@ -177,7 +179,7 @@ class EthBlockProcess {
                     if (value.gt(0)) {
                         const bigInitGasUsed: BigInt | string = (trace?.result?.gasUsed === "0x0" || trace?.result?.gasUsed === "0n" || trace?.result?.gasUsed == null) ? "0" : ethers.toBigInt(trace?.result?.gasUsed);
                         const gasPrice: BigInt | string = (trace?.result?.gas === "0x0" || trace?.result?.gas === "0n" || trace?.result?.gas == null) ? "0" : ethers.toBigInt(trace?.result?.gas);
-    
+
                         const txReceipt: any = {
                             tx_id: trace.txHash,
                             fromAddress: trace?.result?.from,
@@ -188,34 +190,34 @@ class EthBlockProcess {
                             gasPrice: Number(gasPrice.toString()),
                             blockHash: trace?.blockHash || '',
                         }
-    
+
                         await this.checkEthDeposit(txReceipt);
-                    }    
+                    }
                     // Process calls with non-zero value
                     else if (trace?.result?.calls && trace?.result?.calls.length > 0) {
                         for (const call of trace?.result?.calls) {
                             const callBigInitValue: BigInt | string = (call.value === "0x0" || call.value === "0n" || call.value == null) ? "0" : ethers.toBigInt(call.value);
                             const callValue: BigNumber = new BigNumber(callBigInitValue.toString());
-                            
+
                             // Only process calls with non-zero value
                             if (callValue.gt(0)) {
-                            const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
-                            const gasPrice: BigInt | string = (call.gas === "0x0" || call.gas === "0n" || call.gas == null) ? "0" : ethers.toBigInt(call.gas);
+                                const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
+                                const gasPrice: BigInt | string = (call.gas === "0x0" || call.gas === "0n" || call.gas == null) ? "0" : ethers.toBigInt(call.gas);
 
-                            const callTxReceipt: any = {
-                                tx_id: trace.txHash,
-                                fromAddress: call.from,
-                                toAddress: call.to,
-                                value: callValue.toString(),
-                                status: call?.error ? false : true,
-                                gasUsed: Number(callBigInitGasUsed.toString()),
-                                gasPrice: Number(gasPrice.toString()),
-                                blockHash: trace.blockHash,
+                                const callTxReceipt: any = {
+                                    tx_id: trace.txHash,
+                                    fromAddress: call.from,
+                                    toAddress: call.to,
+                                    value: callValue.toString(),
+                                    status: call?.error ? false : true,
+                                    gasUsed: Number(callBigInitGasUsed.toString()),
+                                    gasPrice: Number(gasPrice.toString()),
+                                    blockHash: trace.blockHash,
+                                }
+
+                                await this.checkEthDeposit(callTxReceipt);
                             }
-
-                            await this.checkEthDeposit(callTxReceipt);
                         }
-                    }
                     }
                 }
             } else {
@@ -225,7 +227,7 @@ class EthBlockProcess {
             console.log("🔥 ~ getTraceBlock error", (error as Error).message);
         }
     };
-    
+
     public getBlockReceipts = async (blockId: number, key: string) => {
         try {
             console.log("INSIDE getBlockReceipts")
@@ -235,45 +237,45 @@ class EthBlockProcess {
                 console.error(`💥 ~ No transactions found in block ${blockId}`);
                 return false;
             }
-    
+
             // Process each transaction receipt
             for (const txReceipt of blockReceipts) {
                 await this.processTxReceipt(txReceipt);
             }
-    
+
             return true;
         } catch (error) {
             console.log("🔥 ~ getBlockReceipts error", (error as Error).message);
             return false;
         }
     };
-    
+
     private fetchBlockReceipts = async (blockId: number) => {
         const hexBlockValue = ethers.toBeHex(blockId.toString());
         const formattedBlockValue = hexBlockValue.replace(/^0x0+/g, '0x');
         return await blockChainHelper.provider.send("eth_getBlockReceipts", [formattedBlockValue]);
     };
-    
+
     private processTxReceipt = async (txReceipt: any) => {
         // Only process successful transactions with logs
         if (!txReceipt?.status || !txReceipt?.logs?.length) {
             return;
         }
-    
-        const gasInfo =await this.extractGasInfo(txReceipt);
+
+        const gasInfo = await this.extractGasInfo(txReceipt);
         const processedTokens = new Set<string>(); // Track processed NFT tokens per transaction
-    
+
         for (const log of txReceipt.logs) {
             await this.processLog(log, gasInfo, processedTokens);
         }
     };
-    
+
     private extractGasInfo = async (txReceipt: any) => {
         const gasUsed = txReceipt.gasUsed ? Number(txReceipt.gasUsed) : 0;
         const hexToNumberGasPrice = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
         const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
         const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
-        
+
         return {
             gasUsed: gasUsed,
             gasPrice: hexToNumberGasPrice,
@@ -282,53 +284,74 @@ class EthBlockProcess {
     };
 
     private processLog = async (log: any, gasInfo: any, processedTokens: Set<string>) => {
-        
-        //here  we have the from and to address 
-        const data: any = {
-            fromAddress: '0x' + log.topics[1]?.substring(26),
-            toAddress: '0x' + log.topics[2]?.substring(26),
-        };
 
-        //check  the from and to address  in the db 
-        let addressExistInDB : any = await this.checkFromToAddressInDB(data);
 
-        if(addressExistInDB.status){
-            //check token address in the db 
-            const contractInfo = await ethProcessHelper.checkIfContract(log.address);
-             
-            if(contractInfo){
-                console.log("contractInfo exist in db 🎉🎉 continue with the process", contractInfo)
-            }else{
-                console.log("contractInfo not exist in db 💥💥 inserting into db", log.address)
-                await ethProcessHelper.insertTokenAddressInDB(log.address, addressExistInDB.data);
-            }
-        }
 
         const contractInfo = await ethProcessHelper.checkIfContract(log.address);
         if (this.isTokenTransfer(log, contractInfo)) {
             //here  we have contractInfo.token_address
             await this.processTokenTransfer(log, gasInfo, contractInfo);
         }
-        else{ 
+        else {
             const nftInfo = await ethProcessHelper.checkIfOurNFTContract(log.address)
             if (this.isNFTTransfer(log, nftInfo)) {
-            await this.processNFTTransfer(log, gasInfo, nftInfo, processedTokens);
-            return;
-        }}
+                await this.processNFTTransfer(log, gasInfo, nftInfo, processedTokens);
+                return;
+            } else if (this.isTokenTransferNotExist(log)) {
+                //here  we have the from and to address 
+                const toAddress = '0x' + log.topics[2]?.substring(26);
+                const addresses = [toAddress].filter(Boolean);
+
+                if (addresses.length > 0) {
+                    const results = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
+                    if (results) {
+                        const [depositTx] = results as string[];
+                        if (depositTx) {
+                            const nativeWalletData: number = depositTx ? JSON.parse(depositTx) : null;
+                            if (nativeWalletData) {
+                                console.log("contractInfo not exist in db 💥💥 inserting into db", log.address)
+                                const tokenDetail: TokenData | null = await ethEther.tokenDetails(log.address);
+                                if (tokenDetail) {
+                                    const contractInfo = await ethProcessHelper.insertTokenAddressInDB(log.address, tokenDetail, nativeWalletData);
+                                    if (contractInfo) {
+                                        await this.processNotExistTokenTransfer(log, gasInfo, contractInfo, TrnxTypeEnum.DEPOSIT)
+                                    } else {
+                                        return;
+                                    }
+
+                                }
+                            } else {
+                                return;
+                            }
+
+                        } else {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
     };
-    
+
     private isNFTTransfer = (log: any, nftInfo: any): boolean => {
-        return nftInfo && Object.keys(nftInfo)?.length > 0 && 
-               log.topics[1] !== undefined && 
-               log.topics[2] !== undefined;
+        return nftInfo && Object.keys(nftInfo)?.length > 0 &&
+            log.topics[1] !== undefined &&
+            log.topics[2] !== undefined;
     };
-    
+
     private isTokenTransfer = (log: any, contractInfo: any): boolean => {
-        return contractInfo && Object.keys(contractInfo)?.length > 0 && 
-               log.topics[2] !== undefined &&
-               !this.isExcludedTopic(log.topics[0]);
+        return contractInfo && Object.keys(contractInfo)?.length > 0 &&
+            log.topics[2] !== undefined &&
+            !this.isExcludedTopic(log.topics[0]);
     };
-    
+
+    private isTokenTransferNotExist = (log: any): boolean => {
+        return log &&
+            log.topics[1] !== undefined &&
+            log.topics[2] !== undefined &&
+            !this.isExcludedTopic(log.topics[0]);
+    };
+
     private isExcludedTopic = (topic: string): boolean => {
         const excludedTopics = [
             this.approval,
@@ -339,34 +362,34 @@ class EthBlockProcess {
         ];
         return excludedTopics.includes(topic);
     };
-    
+
     private processNFTTransfer = async (
-        log: any, 
-        gasInfo: any, 
-        nftInfo: any, 
+        log: any,
+        gasInfo: any,
+        nftInfo: any,
         processedTokens: Set<string>
     ) => {
         // Avoid processing the same NFT token multiple times in one transaction
         if (processedTokens.has(nftInfo.token_address)) {
             return;
         }
-    
+
         const transferData: any = await this.getTransferEventDetail(
             nftInfo.token_address,
             log.blockNumber
         );
-    
+
         if (!transferData?.length) {
             console.log("Not get transfer data.");
             return;
         }
-    
+
         processedTokens.add(nftInfo.token_address);
-    
+
         const fromAddress = transferData[0]?.args[0];
         const toAddress = transferData[0]?.args[1];
         const tokenId = ethers.toNumber(transferData[0]?.args[2]);
-    
+
         const txData: TxType = {
             txId: transferData[0].transactionHash,
             fromAddress: fromAddress,
@@ -378,17 +401,17 @@ class EthBlockProcess {
             txType: null,
             trnx_fee: gasInfo.trnx_fee
         };
-    
+
         await this.checkAddressInDB(txData);
     };
-    
+
     private processTokenTransfer = async (log: any, gasInfo: any, contractInfo: any) => {
         const amount = await this.calculateTokenAmount(log.data, contractInfo.decimals);
-        
+
         if (amount <= 0) {
             return;
         }
-    
+
         const txData: TxType = {
             txId: log.transactionHash,
             fromAddress: '0x' + log.topics[1]?.substring(26),
@@ -400,50 +423,76 @@ class EthBlockProcess {
             txType: null,
             trnx_fee: gasInfo.trnx_fee
         };
-    
+
         await this.checkAddressInDB(txData);
     };
-    
+
+    private processNotExistTokenTransfer = async (log: any, gasInfo: any, contractInfo: any, txType: TrnxTypeEnum.DEPOSIT) => {
+        const amount = await this.calculateTokenAmount(log.data, contractInfo.decimals);
+        if (amount <= 0) {
+            return;
+        }
+
+        const txData: TxType = {
+            txId: log.transactionHash,
+            fromAddress: '0x' + log.topics[1]?.substring(26),
+            toAddress: '0x' + log.topics[2]?.substring(26),
+            token: contractInfo,
+            amount: amount,
+            blockId: log.blockNumber,
+            isNFTToken: false,
+            txType: txType,
+            trnx_fee: gasInfo.trnx_fee
+        };
+
+        if (txData.txType !== null) {
+            await this.addTxToQueue(
+                txData,
+                this.deposit_withdraw_topic || ""
+            );
+        }
+    };
+
     private calculateTokenAmount = async (data: string, decimals: number): Promise<number> => {
         const decimalPrecision = decimals.toString().length - 1;
         return await utilityHelper.bigNumberSafeMath(data, '/', Math.pow(10, decimalPrecision));
     };
-        public async checkEthDeposit(data: blocksTrnx) {
-            try {
-                /** for check the eth deposit */
-                if (
-                    data.value !== '0' &&
-                    data.toAddress
-                ) {
-                    const gasUsed = data.gasUsed ? data.gasUsed : 0;
-                    const effectiveGasPrice: number = Number(data.gasPrice) || 0;
-                    const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice);
-                    const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
-    
-                    const ethValue = await blockChainHelper.convertWeiToEth((data.value ? data.value : 0));
-                    const amount = parseFloat(ethValue.toString());
-    
-                    const txData: TxType = {
-                        txId: data.tx_id,
-                        fromAddress: data.fromAddress.toLowerCase(),
-                        toAddress: data.toAddress.toLowerCase(),
-                        token: null,
-                        amount,
-                        blockId: data?.block_number,
-                        isNFTToken: false,
-                        txType: null,
-                        trnx_fee: Number(gasInEth)
-                    };
-                    await this.checkAddressInDB(txData);
-                }else{
-                    console.log("else block checkEthDeposit")
-                }
-            } catch (error: any) {
-                console.error("💥 ~ ~ check_eth_deposit error", (error as Error).message);
-                await globalHelper.saveErrorLogs('ETH_check_deposit', error.message)
-    
+    public async checkEthDeposit(data: blocksTrnx) {
+        try {
+            /** for check the eth deposit */
+            if (
+                data.value !== '0' &&
+                data.toAddress
+            ) {
+                const gasUsed = data.gasUsed ? data.gasUsed : 0;
+                const effectiveGasPrice: number = Number(data.gasPrice) || 0;
+                const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice);
+                const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
+
+                const ethValue = await blockChainHelper.convertWeiToEth((data.value ? data.value : 0));
+                const amount = parseFloat(ethValue.toString());
+
+                const txData: TxType = {
+                    txId: data.tx_id,
+                    fromAddress: data.fromAddress.toLowerCase(),
+                    toAddress: data.toAddress.toLowerCase(),
+                    token: null,
+                    amount,
+                    blockId: data?.block_number,
+                    isNFTToken: false,
+                    txType: null,
+                    trnx_fee: Number(gasInEth)
+                };
+                await this.checkAddressInDB(txData);
+            } else {
+                console.log("else block checkEthDeposit")
             }
+        } catch (error: any) {
+            console.error("💥 ~ ~ check_eth_deposit error", (error as Error).message);
+            await globalHelper.saveErrorLogs('ETH_check_deposit', error.message)
+
         }
+    }
     public async checkAddressInDB(txData: TxType) {
         try {
             // let ourTrnx: any = null;
@@ -471,7 +520,7 @@ class EthBlockProcess {
             console.error("Error in checkAddressInDB>>", err)
         }
     }
-    
+
     //check  the from and to address  in the db 
     public async checkFromToAddressInDB(data: any) {
         try {
@@ -504,44 +553,44 @@ class EthBlockProcess {
 
         } catch (err: any) {
             console.error("Error in checkFromToAddressInDB>>", err)
-            return {status: false, data: null};
+            return { status: false, data: null };
         }
     }
 
-        public async addTxToQueue(data: TxType, queueName: string) {
-            try {
-                await kafkaHelper.produceMessage(queueName, data)
-            } catch (err: any) {
-                console.error("addTxToQueue", (err as Error).message);
-                await globalHelper.saveErrorLogs('ETH_checkAddressInDB', err.message)
-    
-            }
-        };
+    public async addTxToQueue(data: TxType, queueName: string) {
+        try {
+            await kafkaHelper.produceMessage(queueName, data)
+        } catch (err: any) {
+            console.error("addTxToQueue", (err as Error).message);
+            await globalHelper.saveErrorLogs('ETH_checkAddressInDB', err.message)
 
-        public getTransferEventDetail = async (
-            tokenAddress: string,
-            blockId: number
-        ) => {
-            try {
-                const contract = new ethers.Contract(
-                    tokenAddress,
-                    config.ERC721ABI,
-                    blockChainHelper.provider
-                );
-    
-                const filter = contract.filters.Transfer();
-                const events = await contract.queryFilter(
-                    filter,
-                    blockId,
-                    blockId
-                );
-    
-                return events;
-            } catch (error) {
-                console.log("🔥 ~ getTransferEventDetail error", (error as Error).message);
-                return [];
-            }
-        };
+        }
+    };
+
+    public getTransferEventDetail = async (
+        tokenAddress: string,
+        blockId: number
+    ) => {
+        try {
+            const contract = new ethers.Contract(
+                tokenAddress,
+                config.ERC721ABI,
+                blockChainHelper.provider
+            );
+
+            const filter = contract.filters.Transfer();
+            const events = await contract.queryFilter(
+                filter,
+                blockId,
+                blockId
+            );
+
+            return events;
+        } catch (error) {
+            console.log("🔥 ~ getTransferEventDetail error", (error as Error).message);
+            return [];
+        }
+    };
 }
 
 export const ethBlocksProcess = new EthBlockProcess();
