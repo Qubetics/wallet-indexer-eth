@@ -13,6 +13,7 @@ class ETHStartProcess {
     this.internalTxsInQueue();
     this.consumeInternalTxQueue();
     this.consumeUpdateBalanceQueue();
+    this.updateEthGasPriceCron();
   }
 
   public async connectKafka() {
@@ -66,6 +67,14 @@ class ETHStartProcess {
       await updateBalanceProcess.updateWalletBalance();
     }, 10000);
   }
+
+  public updateEthGasPriceCron = async () => {
+    schedule.scheduleJob("*/7 * * * * *", async function () {
+      console.log("Updating  gas  price  eth...")
+      await updateBalanceProcess.updateGasPrice();
+    });
+  };
+  
 }
 
 new ETHStartProcess();

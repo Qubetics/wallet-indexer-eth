@@ -3,8 +3,16 @@ import kafkaHelper from "../config/kafka.helper";
 import { walletHelper } from "../helpers";
 import { balanceUpdateQueue } from "../interfaces/globalHelper";
 import { walletModel } from "../models";
+import  axios from "axios";
+import { GasPrice } from "../models/tables/model.gas_price";
+
+// Fix: Import STATIC_COIN_FAMILY from the correct config location
+import { config as appConfig } from "../config/config";
+const { ETH, BNB, POL, BTC, TRX, SOL } = appConfig.STATIC_COIN_FAMILY;
 
 class UpdateBalanceController {
+
+
     public eth_pending_balance_update_topic = config.config.KAFKA_BALANCE.ETH_PENDING_BALANCE_UPDATE_TOPIC;
 
     public updateWalletBalance = async () => {
@@ -126,6 +134,57 @@ class UpdateBalanceController {
             console.error("Error in updateBalance", err)
         }
     }
+
+    
+
+       //TODO : temprory cron for ETH gas  price  update 
+       public updateGasPrice = async () => {
+        try {
+          let url: string = `${appConfig.ETH_GAS_FEE_URL}${appConfig.ETH_GAS_FEE_API_KEY}`;
+          await axios.get(url).then(async (responce) => {
+            if (responce.status == 200) {
+              let SafeGasPrice = parseFloat(responce.data.result.SafeGasPrice);
+              let ProposeGasPrice = parseFloat(
+                responce.data.result.ProposeGasPrice
+              );
+              let FastGasPrice = parseFloat(responce.data.result.FastGasPrice);
+    
+              // Round to 6 decimal places if necessary
+              if (SafeGasPrice.toString().split(".")[1]?.length > 6) {
+                SafeGasPrice = parseFloat(SafeGasPrice.toFixed(6));
+              }
+    
+              // Round to 6 decimal places if necessary
+              if (ProposeGasPrice.toString().split(".")[1]?.length > 6) {
+                ProposeGasPrice = parseFloat(ProposeGasPrice.toFixed(6));
+              }
+    
+              // Round to 6 decimal places if necessary
+              if (FastGasPrice.toString().split(".")[1]?.length > 6) {
+                FastGasPrice = parseFloat(FastGasPrice.toFixed(6));
+              }
+    
+              if(FastGasPrice>0){
+                await GasPrice.GasPriceWrite.update(
+                  {
+                    safe_gas_price: SafeGasPrice,
+                    propose_gas_price: ProposeGasPrice,
+                    fast_gas_price: FastGasPrice,
+                  },
+                  {
+                    where: { coin_family: ETH },
+                  }
+                );
+              }
+            }
+          });
+          return;
+        } catch (err: any) {
+          let message: any = (err as Error).message;
+          console.error("🔥 ~ ~ updateGasPrice error", message);
+          return;
+        }
+      };
 
 
 

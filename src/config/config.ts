@@ -15,6 +15,10 @@ export const config = {
   TOKEN_TYPE_ETH: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.TOKEN_TYPE_ETH}`,
   ETH_NFT: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.TOKEN_TYPE_ETH_NFT}`,
   STATIC_COIN_FAMILY: zookeeperConfig.config.STATIC_COIN_FAMILY,
+
+  ETH_GAS_FEE_URL : zookeeperConfig.config.ETH.GAS_FEE_URL || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=",
+  ETH_GAS_FEE_API_KEY : zookeeperConfig.config.ETH.GAS_FEE_API_KEY || "api_key",
+
   REDISKEYS: {
     ETH_BLOCKS: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.ETH_BLOCKS}`,
     OLD_BLOCK_ETH: zookeeperConfig.config.OLD_BLOCK_ETH,
