@@ -18,6 +18,13 @@ export const config = {
 
   ETH_GAS_FEE_URL : zookeeperConfig.config.ETH.GAS_FEE_URL || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=",
   ETH_GAS_FEE_API_KEY : zookeeperConfig.config.ETH.GAS_FEE_API_KEY || "api_key",
+   
+  BACKEND_WALLET_ADDRESSES: zookeeperConfig.config.BACKEND_WALLET_BALANCE_ADDRESSES_TOPIC,
+
+  COIN_ZONE: {
+    KEY: zookeeperConfig.config.COIN_ZONE.KEY,
+    URL: zookeeperConfig.config.COIN_ZONE.URL,
+  },
 
   REDISKEYS: {
     ETH_BLOCKS: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.ETH_BLOCKS}`,
@@ -27,6 +34,13 @@ export const config = {
     ETH_ERROR_LOGS: zookeeperConfig.config.ETH_ERROR_LOGS,
     NODE_ALERT_ETH: zookeeperConfig.config.NODE_ALERT_ETH,
     SPECIFIC_BLOCK_ETH: zookeeperConfig.config.SPECIFIC_BLOCK_ETH
+  },
+
+  TOKENLIST: {
+    ETH: {
+      ERC20: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.TOKEN_TYPE_ETH}`,
+      NFT: `${name}_${zookeeperConfig.config.SERVER}_${zookeeperConfig.config.TOKEN_TYPE_ETH_NFT}`,
+    }
   },
 
   /**

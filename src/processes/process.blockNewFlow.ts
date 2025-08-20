@@ -282,8 +282,31 @@ class EthBlockProcess {
     };
 
     private processLog = async (log: any, gasInfo: any, processedTokens: Set<string>) => {
+        
+        //here  we have the from and to address 
+        const data: any = {
+            fromAddress: '0x' + log.topics[1]?.substring(26),
+            toAddress: '0x' + log.topics[2]?.substring(26),
+        };
+
+        //check  the from and to address  in the db 
+        let addressExistInDB : any = await this.checkFromToAddressInDB(data);
+
+        if(addressExistInDB.status){
+            //check token address in the db 
+            const contractInfo = await ethProcessHelper.checkIfContract(log.address);
+             
+            if(contractInfo){
+                console.log("contractInfo exist in db 🎉🎉 continue with the process", contractInfo)
+            }else{
+                console.log("contractInfo not exist in db 💥💥 inserting into db", log.address)
+                await ethProcessHelper.insertTokenAddressInDB(log.address, addressExistInDB.data);
+            }
+        }
+
         const contractInfo = await ethProcessHelper.checkIfContract(log.address);
         if (this.isTokenTransfer(log, contractInfo)) {
+            //here  we have contractInfo.token_address
             await this.processTokenTransfer(log, gasInfo, contractInfo);
         }
         else{ 
@@ -423,7 +446,6 @@ class EthBlockProcess {
         }
     public async checkAddressInDB(txData: TxType) {
         try {
-            console.log("INSIDE checkAddressInDB")
             // let ourTrnx: any = null;
             const addresses = [txData.fromAddress, txData.toAddress].filter(Boolean);
 
@@ -447,6 +469,42 @@ class EthBlockProcess {
             }
         } catch (err: any) {
             console.error("Error in checkAddressInDB>>", err)
+        }
+    }
+    
+    //check  the from and to address  in the db 
+    public async checkFromToAddressInDB(data: any) {
+        try {
+            const addresses = [data.fromAddress, data.toAddress].filter(Boolean);
+
+            const results: any = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
+
+            // Log the raw results for debugging
+            // console.log("results in checkFromToAddressInDB", results);
+
+            if (results && results.length > 0) {
+                // Find the first non-null result and parse it if it's a stringified object
+                for (let i = 0; i < results.length; i++) {
+                    const res = results[i];
+                    if (res !== null && res !== undefined) {
+                        let parsedData = res;
+                        if (typeof res === "string") {
+                            try {
+                                parsedData = JSON.parse(res);
+                            } catch (e) {
+                                // If parsing fails, keep as is
+                                parsedData = res;
+                            }
+                        }
+                        return { status: true, data: parsedData };
+                    }
+                }
+            }
+            return { status: false, data: null };
+
+        } catch (err: any) {
+            console.error("Error in checkFromToAddressInDB>>", err)
+            return {status: false, data: null};
         }
     }
 
