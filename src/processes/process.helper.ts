@@ -443,6 +443,32 @@ class EthProcessHelper {
         .replace(/T/, " ")
         .replace(/\..+/, "");
 
+      //check if token already exist in db
+      let coinDataExist: any = await coinsModel.findOne({
+        attributes:[
+          "coin_id",
+          "coin_status",
+          "added_by",
+          "coin_family",
+          "token_address",
+          "is_token",
+          "token_type",
+          "decimals",
+          "coin_symbol",
+        ],
+        where: {
+          token_address: tokenAddress,
+          coin_family: coinFamily
+        },
+        raw: true
+      });
+
+      if(coinDataExist){
+        return coinDataExist;
+      }
+      
+
+      //if token not exist in db then add it to db
       const coinData: any = await this.addCoinToTable(
         tokenAddress,
         symbol,
