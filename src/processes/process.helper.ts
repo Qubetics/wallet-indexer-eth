@@ -365,12 +365,14 @@ class EthProcessHelper {
 
       if (tokenAddress && symbol) {
         // remove this added through the cron job
-        const tradingViewData = await globalHelper.getTradingSource(symbol);
-        console.log("tradingViewData >>>", tradingViewData);
-        if (tradingViewData.status) {
-          graphSource = tradingViewData.graphSource;
-          graphPair = tradingViewData.graphPair;
-        }
+        // const tradingViewData = await globalHelper.getTradingSource(symbol);
+        // console.log("tradingViewData >>>", tradingViewData);
+        // if (tradingViewData.status) {
+        //   graphSource = tradingViewData.graphSource;
+        //   graphPair = tradingViewData.graphPair;
+        // }
+        console.log("skipping graphSource >>>", graphSource);
+        console.log("skipping graphPair >>>", graphPair);
       }
 
       const coinData: any = {
@@ -391,7 +393,7 @@ class EthProcessHelper {
         updated_at: currentUTCDate,
         graph_pair: graphPair,
         graph_source: graphSource,
-        is_on_trading_view: graphSource ? 1 : 0,
+        is_on_trading_view: 1 ,
       };
       const response: any = await globalHelper.coinCreate(coinData);
       console.log("🚀 ~ processHelper ~ response:", response)
