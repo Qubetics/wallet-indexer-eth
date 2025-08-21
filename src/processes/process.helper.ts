@@ -358,22 +358,22 @@ class EthProcessHelper {
   ) {
     try {
       //will  be  updated  later 
-      let swapSupported: number = 0;
+      // const swapSupported: number = 0;
 
-      let graphSource: string | null = null;
-      let graphPair: string | null = null;
+      // const graphSource: string | null = null;
+      // const graphPair: string | null = null;
 
-      if (tokenAddress && symbol) {
-        // remove this added through the cron job
-        // const tradingViewData = await globalHelper.getTradingSource(symbol);
-        // console.log("tradingViewData >>>", tradingViewData);
-        // if (tradingViewData.status) {
-        //   graphSource = tradingViewData.graphSource;
-        //   graphPair = tradingViewData.graphPair;
-        // }
-        console.log("skipping graphSource >>>", graphSource);
-        console.log("skipping graphPair >>>", graphPair);
-      }
+      // if (tokenAddress && symbol) {
+      //   // remove this added through the cron job
+      //   // const tradingViewData = await globalHelper.getTradingSource(symbol);
+      //   // console.log("tradingViewData >>>", tradingViewData);
+      //   // if (tradingViewData.status) {
+      //   //   graphSource = tradingViewData.graphSource;
+      //   //   graphPair = tradingViewData.graphPair;
+      //   // }
+      //   console.log("skipping graphSource >>>", graphSource);
+      //   console.log("skipping graphPair >>>", graphPair);
+      // }
 
       const coinData: any = {
         coin_name: name,
@@ -384,16 +384,16 @@ class EthProcessHelper {
         coin_status: 1,
         is_token: 1,
         is_on_cmc: 1,
-        for_swap: swapSupported,
+        for_swap: 0,
         added_by: "user",
         token_type: tokenType.toUpperCase(),
         decimals: Math.pow(10, parseInt(decimals)),
         token_address: tokenAddress,
         created_at: currentUTCDate,
         updated_at: currentUTCDate,
-        graph_pair: graphPair,
-        graph_source: graphSource,
-        is_on_trading_view: 1 ,
+        graph_pair: null,
+        graph_source: null,
+        is_on_trading_view: 1,
       };
       const response: any = await globalHelper.coinCreate(coinData);
       console.log("🚀 ~ processHelper ~ response:", response)

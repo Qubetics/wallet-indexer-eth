@@ -142,95 +142,95 @@ class GlobalHelper {
             console.error("Error in saveErrorLogs", err)
         }
     }
-    
 
 
-public async coinCreate(obj: any) {
-    try {
-        let data: any = await coinsModel.create(obj);
-        return data;
-    } catch (err: any) {
-        console.error("Error in coin_create>>", err);
 
-        const uniqueConstraint =
-            err.name === 'SequelizeUniqueConstraintError' &&
-            err.errors?.some(
-                (e: any) => e.path === 'unique_coinfamily_tokenaddress' || e.message?.includes('unique_coinfamily_tokenaddress')
+    public async coinCreate(obj: any) {
+        try {
+            const data: any = await coinsModel.create(obj);
+            return data;
+        } catch (err: any) {
+            console.error("Error in coin_create>>", err);
+
+            const uniqueConstraint =
+                err.name === 'SequelizeUniqueConstraintError' &&
+                err.errors?.some(
+                    (e: any) => e.path === 'unique_coinfamily_tokenaddress' || e.message?.includes('unique_coinfamily_tokenaddress')
+                );
+
+            if (uniqueConstraint) {
+                const tokenAddress = obj.token_address;
+                const coinFamily = obj.coin_family;
+
+                try {
+                    const existing = await coinsModel.findOne({
+                        where: {
+                            token_address: tokenAddress,
+                            coin_family: coinFamily,
+                        },
+                        raw: true
+                    });
+                    console.log("🚀 ~ CoinQueries ~ coin_create ~ existing:", existing)
+
+                    if (existing) {
+                        return existing;
+                    }
+                } catch (findErr) {
+                    console.error("Error finding existing coin>>", findErr);
+                    await this.saveErrorLogs("coin_create_find_existing", (findErr as any).message);
+                }
+            }
+
+            await this.saveErrorLogs("coin_create", err.message);
+            return null;
+        }
+    }
+
+    public async setHashTable(key: string, field: any, value: any, expiryInSeconds?: number) {
+        try {
+            await redisClient.HSET(key, field.toUpperCase(), value, (err: any, reply: any) => {
+                if (err) {
+                    console.error('redis set string data error...', err)
+                }
+            });
+            if (expiryInSeconds) {
+                await redisClient.EXPIRE(key, expiryInSeconds);
+            }
+        } catch (err: any) {
+            console.error('💥 ~ ~ set_hash_table error');
+            throw err;
+        }
+    }
+
+    public async updateTokenInRedisHash(coin_data: any) {
+        try {
+            await this.setHashTable(
+                config.TOKENLIST.ETH.ERC20,
+                coin_data.token_address,
+                JSON.stringify(coin_data)
             );
 
-        if (uniqueConstraint) {
-            const tokenAddress = obj.token_address;
-            const coinFamily = obj.coin_family;
-
-            try {
-                const existing = await coinsModel.findOne({
-                    where: {
-                        token_address: tokenAddress,
-                        coin_family: coinFamily,
-                    },
-                    raw: true
-                });
-                console.log("🚀 ~ CoinQueries ~ coin_create ~ existing:", existing)
-
-                if (existing) {
-                    return existing;
-                }
-            } catch (findErr) {
-                console.error("Error finding existing coin>>", findErr);
-                await this.saveErrorLogs("coin_create_find_existing", (findErr as any).message);
-            }
+        } catch (err: any) {
+            console.error("Error in update_token_in_redis_hash.", err);
+            await this.saveErrorLogs(
+                "update_token_in_redis_hash",
+                err.message
+            );
+            return null;
         }
 
-        await this.saveErrorLogs("coin_create", err.message);
-        return null;
     }
-}
 
-public async setHashTable(key: string, field: any, value: any, expiryInSeconds?: number) {
-    try {
-      await redisClient.HSET(key, field.toUpperCase(), value, (err: any, reply: any) => {
-        if (err) {
-          console.error('redis set string data error...', err)
+    public async customTokenCreate(obj: any) {
+        try {
+            let data: any = await customTokennModel.create(obj)
+            return data;
+        } catch (err: any) {
+            console.error("Error in custom_token_create>>", err)
+            await this.saveErrorLogs("custom_token_create", err.message);
+            return null;
         }
-      });
-      if (expiryInSeconds) {
-        await redisClient.EXPIRE(key, expiryInSeconds);
-      }
-    } catch (err: any) {
-      console.error('💥 ~ ~ set_hash_table error');
-      throw err;
     }
-  }
-
-public async updateTokenInRedisHash(coin_data: any) {
-    try {
-          await this.setHashTable(
-            config.TOKENLIST.ETH.ERC20,
-            coin_data.token_address,
-            JSON.stringify(coin_data)
-          );
-
-      }catch (err: any) {
-      console.error("Error in update_token_in_redis_hash.", err);
-      await this.saveErrorLogs(
-        "update_token_in_redis_hash",
-        err.message
-      );
-      return null;
-    }
-
-  }
-
-  public async customTokenCreate(obj: any) {
-    try {
-        let data: any = await customTokennModel.create(obj)
-        return data;
-    } catch (err: any) {
-        console.error("Error in custom_token_create>>", err)
-        await this.saveErrorLogs("custom_token_create", err.message);
-        return null;
-    }
-}
 
 
 }
