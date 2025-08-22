@@ -181,16 +181,16 @@ class EthBlockProcess {
                     const value: BigNumber = new BigNumber(bigInitValue.toString());
                     // Identify COIN transactions (typically Ether transfers)
                     if (value.gt(0)) {
-                        const bigInitGasUsed: BigInt | string = (trace?.result?.gasUsed === "0x0" || trace?.result?.gasUsed === "0n" || trace?.result?.gasUsed == null) ? "0" : ethers.toBigInt(trace?.result?.gasUsed);
-                        const gasPrice: BigInt | string = (trace?.result?.gas === "0x0" || trace?.result?.gas === "0n" || trace?.result?.gas == null) ? "0" : ethers.toBigInt(trace?.result?.gas);
+                        // const bigInitGasUsed: BigInt | string = (trace?.result?.gasUsed === "0x0" || trace?.result?.gasUsed === "0n" || trace?.result?.gasUsed == null) ? "0" : ethers.toBigInt(trace?.result?.gasUsed);
+                        // const gasPrice: BigInt | string = (trace?.result?.gas === "0x0" || trace?.result?.gas === "0n" || trace?.result?.gas == null) ? "0" : ethers.toBigInt(trace?.result?.gas);
 
                         const txReceipt: blocksTrnx = {
                             txId: trace.txHash,
                             fromAddress: trace?.result?.from,
                             toAddress: trace?.result?.to,
                             value: value.toString(),
-                            gasUsed: Number(bigInitGasUsed.toString()),
-                            gasPrice: Number(gasPrice.toString()),
+                            gasUsed: null,
+                            gasPrice: null,
                             blockNumber: blockId
                         }
 
@@ -208,16 +208,16 @@ class EthBlockProcess {
 
                             // Only process calls with non-zero value
                             if (callValue.gt(0)) {
-                                const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
-                                const gasPrice: BigInt | string = (call.gas === "0x0" || call.gas === "0n" || call.gas == null) ? "0" : ethers.toBigInt(call.gas);
+                                // const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
+                                // const gasPrice: BigInt | string = (call.gas === "0x0" || call.gas === "0n" || call.gas == null) ? "0" : ethers.toBigInt(call.gas);
 
                                 const callTxReceipt: blocksTrnx = {
                                     txId: trace.txHash,
                                     fromAddress: call.from,
                                     toAddress: call.to,
                                     value: callValue.toString(),
-                                    gasUsed: Number(callBigInitGasUsed.toString()),
-                                    gasPrice: Number(gasPrice.toString()),
+                                    gasUsed: null,
+                                    gasPrice: null,
                                     blockNumber: blockId
                                 }
 
@@ -525,26 +525,51 @@ class EthBlockProcess {
             if (
                 data.toAddress
             ) {
-                const gasUsed = data.gasUsed ? data.gasUsed : 0;
-                const effectiveGasPrice: number = Number(data.gasPrice) || 0;
-                const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice);
-                const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
+                const addresses = [data.fromAddress, data.toAddress].filter(Boolean);
+                let txType = null;
+                if (addresses.length > 0) {
+                    const results = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
+                    if (results) {
+                        const [withdrawTx, depositTx] = results as string[];
+                        if (depositTx) {
+                            txType = TrnxTypeEnum.DEPOSIT;
+                        } else if (withdrawTx) {
+                            txType = TrnxTypeEnum.WITHDRAW;
+                        }
+                    }
+                }
+                if (txType !== null) {
+                    if (data.gasUsed == null && data.gasPrice == null) {
+                        const txReceipt: TransactionReceipt | null = await blockChainHelper.provider.getTransactionReceipt(data?.txId);
+                        const gasUsed: number = Number(txReceipt?.gasUsed) || 0;
+                        data.gasUsed = gasUsed;
+                        data.gasPrice = Number(txReceipt?.gasPrice) || 0;
+                    }
 
-                const ethValue = await blockChainHelper.convertWeiToEth((data.value ? data.value : 0));
-                const amount = parseFloat(ethValue.toString());
+                    const gasUsed = data.gasUsed ? data.gasUsed : 0;
+                    const effectiveGasPrice: number = Number(data.gasPrice) || 0;
+                    const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', effectiveGasPrice);
+                    const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
 
-                const txData: TxType = {
-                    txId: data.txId,
-                    fromAddress: data.fromAddress.toLowerCase(),
-                    toAddress: data.toAddress.toLowerCase(),
-                    token: null,
-                    amount,
-                    blockId: data?.blockNumber,
-                    isNFTToken: false,
-                    txType: null,
-                    trnx_fee: Number(gasInEth)
-                };
-                await this.checkAddressInDB(txData);
+                    const ethValue = await blockChainHelper.convertWeiToEth((data.value ? data.value : 0));
+                    const amount = parseFloat(ethValue.toString());
+
+                    const txData: TxType = {
+                        txId: data.txId,
+                        fromAddress: data.fromAddress.toLowerCase(),
+                        toAddress: data.toAddress.toLowerCase(),
+                        token: null,
+                        amount,
+                        blockId: data?.blockNumber,
+                        isNFTToken: false,
+                        txType: txType,
+                        trnx_fee: Number(gasInEth)
+                    };
+                    await this.addTxToQueue(
+                        txData,
+                        this.deposit_withdraw_topic || ""
+                    );
+                }
             } else {
                 console.log("else block checkEthDeposit")
             }
