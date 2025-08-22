@@ -6,7 +6,7 @@ import { blocksTrnx } from "../interfaces/globalHelper";
 import { ethOldBLockModel } from "../models";
 import { globalHelper } from "../helpers/global.helper";
 import kafkaHelper from "../config/kafka.helper";
-import { ethers } from "ethers";
+import { ethers, TransactionReceipt } from "ethers";
 import { TxType } from "../types/ERC20Tokens.types";
 import { BigNumber } from "bignumber.js";
 import { ethEther } from "../helpers/ether_eth_helpers";
@@ -91,8 +91,8 @@ class EthBlockProcess {
                 TO_BLOCK_NUMBER: toBlockNumber
             });
             // await this.getTxFromBlock(blockNumber, KEYS.latestBlock);
-            this.getBlockReceipts(blockNumber, KEYS.latestBlock);
-            this.getTraceBlock(blockNumber, KEYS.latestBlock);
+            this.getBlockReceipts(blockNumber);
+            this.getTraceBlock(blockNumber);
         } catch (err: any) {
             console.error("Error in readBlocks>>.", (err as Error).message)
             await globalHelper.saveErrorLogs('ETH_readBlocks', err.message)
@@ -110,8 +110,8 @@ class EthBlockProcess {
                     if (end_block > start_block) {
                         console.log("This block go for getTxFromBlock")
                         // await this.getTxFromBlock(start_block, KEYS.behinedBlock);
-                        this.getBlockReceipts(start_block, KEYS.behinedBlock);
-                        this.getTraceBlock(start_block, KEYS.behinedBlock);
+                        this.getBlockReceipts(start_block);
+                        this.getTraceBlock(start_block);
                         start_block = start_block + 1;
                         const add_data = {
                             id: id,
@@ -146,8 +146,8 @@ class EthBlockProcess {
             if (specific_block && Number(specific_block) > 0) {
                 console.table({ SPECIFIC_BLOCK: specific_block })
                 // await this.getTxFromBlock(specific_block, KEYS.readSpecificBlock)
-                this.getBlockReceipts(specific_block, KEYS.readSpecificBlock);
-                this.getTraceBlock(specific_block, KEYS.readSpecificBlock);
+                this.getBlockReceipts(specific_block);
+                this.getTraceBlock(specific_block);
                 await ethProcessHelper.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.SPECIFIC_BLOCK_ETH, '0')
             } else {
                 console.log("Specific block is not present>>>>")
@@ -158,7 +158,7 @@ class EthBlockProcess {
         }
     }
 
-    public getTraceBlock = async (blockId: number, key: string) => {
+    public getTraceBlock = async (blockId: number) => {
         try {
             console.log("INSIDE getTraceBlock", blockId)
             const hexBlockValue = ethers.toBeHex(blockId.toString());
@@ -172,6 +172,10 @@ class EthBlockProcess {
                 const traces = response;
                 // Loop through the traces and identify transaction types
                 for (const trace of traces) {
+                    if (trace?.error) {
+                        console.log("(trace?.error", trace?.error);
+                        return false;
+                    }
                     // Process main trace 
                     const bigInitValue: BigInt | string = (trace?.result?.value === "0x0" || trace?.result?.value === "0n" || trace?.result?.value == null) ? "0" : ethers.toBigInt(trace?.result?.value);
                     const value: BigNumber = new BigNumber(bigInitValue.toString());
@@ -180,15 +184,14 @@ class EthBlockProcess {
                         const bigInitGasUsed: BigInt | string = (trace?.result?.gasUsed === "0x0" || trace?.result?.gasUsed === "0n" || trace?.result?.gasUsed == null) ? "0" : ethers.toBigInt(trace?.result?.gasUsed);
                         const gasPrice: BigInt | string = (trace?.result?.gas === "0x0" || trace?.result?.gas === "0n" || trace?.result?.gas == null) ? "0" : ethers.toBigInt(trace?.result?.gas);
 
-                        const txReceipt: any = {
-                            tx_id: trace.txHash,
+                        const txReceipt: blocksTrnx = {
+                            txId: trace.txHash,
                             fromAddress: trace?.result?.from,
                             toAddress: trace?.result?.to,
                             value: value.toString(),
-                            status: trace?.error ? false : true,
                             gasUsed: Number(bigInitGasUsed.toString()),
                             gasPrice: Number(gasPrice.toString()),
-                            blockHash: trace?.blockHash || '',
+                            blockNumber: blockId
                         }
 
                         await this.checkEthDeposit(txReceipt);
@@ -196,6 +199,10 @@ class EthBlockProcess {
                     // Process calls with non-zero value
                     else if (trace?.result?.calls && trace?.result?.calls.length > 0) {
                         for (const call of trace?.result?.calls) {
+                            if (call?.error) {
+                                console.log("(call?.error", call?.error);
+                                return false;
+                            }
                             const callBigInitValue: BigInt | string = (call.value === "0x0" || call.value === "0n" || call.value == null) ? "0" : ethers.toBigInt(call.value);
                             const callValue: BigNumber = new BigNumber(callBigInitValue.toString());
 
@@ -204,15 +211,14 @@ class EthBlockProcess {
                                 const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
                                 const gasPrice: BigInt | string = (call.gas === "0x0" || call.gas === "0n" || call.gas == null) ? "0" : ethers.toBigInt(call.gas);
 
-                                const callTxReceipt: any = {
-                                    tx_id: trace.txHash,
+                                const callTxReceipt: blocksTrnx = {
+                                    txId: trace.txHash,
                                     fromAddress: call.from,
                                     toAddress: call.to,
                                     value: callValue.toString(),
-                                    status: call?.error ? false : true,
                                     gasUsed: Number(callBigInitGasUsed.toString()),
                                     gasPrice: Number(gasPrice.toString()),
-                                    blockHash: trace.blockHash,
+                                    blockNumber: blockId
                                 }
 
                                 await this.checkEthDeposit(callTxReceipt);
@@ -225,10 +231,11 @@ class EthBlockProcess {
             }
         } catch (error) {
             console.log("🔥 ~ getTraceBlock error", (error as Error).message);
+            this.getTxFromBlock(blockId);
         }
     };
 
-    public getBlockReceipts = async (blockId: number, key: string) => {
+    public getBlockReceipts = async (blockId: number) => {
         try {
             console.log("INSIDE getBlockReceipts")
             // Get block receipts
@@ -249,6 +256,60 @@ class EthBlockProcess {
             return false;
         }
     };
+
+    public async getTxFromBlock(blockId: number) {
+        try {
+            console.error("In getTxFromBlock>>.", blockId)
+            const blockInfo = await blockChainHelper.provider.getBlock(blockId, true);
+            if (!blockInfo) {
+                console.log("No block info");
+                await ethOldBLockModel.create({
+                    block_number: blockId,
+                    coin_family: config.STATIC_COIN_FAMILY.ETH,
+                    start_block: blockId,
+                    end_block: blockId,
+                    status: 0
+                });
+                return;
+            }
+            const transactions = blockInfo.prefetchedTransactions || [];
+            if (transactions.length === 0) {
+                console.log("No block info transactions");
+                return;
+            }
+
+
+            const transactionPromises = transactions.map(async (tx) => {
+                const amount: BigNumber = new BigNumber(tx?.value.toString());
+                if (amount.gt(0)) {
+                    const txReceipt: TransactionReceipt | null = await blockChainHelper.provider.getTransactionReceipt(tx?.hash);
+
+                    if (txReceipt?.status == 0) {
+                        console.log("(txReceipt.status === false && txReceipt !== null");
+                        return false;
+                    }
+                    const gasUsed = txReceipt?.gasUsed ? txReceipt.gasUsed : 0;
+                    const gasPrice: number = Number(txReceipt?.gasPrice) || 0;
+                    const blockTransaction: blocksTrnx = {
+                        txId: tx.hash || '',
+                        value: amount?.toString(),
+                        fromAddress: tx.from || '',
+                        toAddress: tx.to || '',
+                        blockNumber: blockId,
+                        gasUsed: Number(gasUsed.toString()),
+                        gasPrice: gasPrice,
+                    }
+                    await this.checkEthDeposit(blockTransaction);
+                }
+            });
+
+            // Wait for all the transaction processing to complete
+            await Promise.allSettled(transactionPromises);
+        } catch (err: any) {
+            console.error("Error in getTxFromBlock:", (err as Error).message);
+            await globalHelper.saveErrorLogs('Eth_readBehindBlock', err.message)
+        }
+    }
 
     private fetchBlockReceipts = async (blockId: number) => {
         const hexBlockValue = ethers.toBeHex(blockId.toString());
@@ -457,11 +518,11 @@ class EthBlockProcess {
         const decimalPrecision = decimals.toString().length - 1;
         return await utilityHelper.bigNumberSafeMath(data, '/', Math.pow(10, decimalPrecision));
     };
-    public async checkEthDeposit(data: blocksTrnx) {
+
+    private async checkEthDeposit(data: blocksTrnx) {
         try {
             /** for check the eth deposit */
             if (
-                data.value !== '0' &&
                 data.toAddress
             ) {
                 const gasUsed = data.gasUsed ? data.gasUsed : 0;
@@ -473,12 +534,12 @@ class EthBlockProcess {
                 const amount = parseFloat(ethValue.toString());
 
                 const txData: TxType = {
-                    txId: data.tx_id,
+                    txId: data.txId,
                     fromAddress: data.fromAddress.toLowerCase(),
                     toAddress: data.toAddress.toLowerCase(),
                     token: null,
                     amount,
-                    blockId: data?.block_number,
+                    blockId: data?.blockNumber,
                     isNFTToken: false,
                     txType: null,
                     trnx_fee: Number(gasInEth)
@@ -493,7 +554,8 @@ class EthBlockProcess {
 
         }
     }
-    public async checkAddressInDB(txData: TxType) {
+
+    private async checkAddressInDB(txData: TxType) {
         try {
             // let ourTrnx: any = null;
             const addresses = [txData.fromAddress, txData.toAddress].filter(Boolean);
@@ -521,43 +583,7 @@ class EthBlockProcess {
         }
     }
 
-    //check  the from and to address  in the db 
-    public async checkFromToAddressInDB(data: any) {
-        try {
-            const addresses = [data.fromAddress, data.toAddress].filter(Boolean);
-
-            const results: any = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
-
-            // Log the raw results for debugging
-            // console.log("results in checkFromToAddressInDB", results);
-
-            if (results && results.length > 0) {
-                // Find the first non-null result and parse it if it's a stringified object
-                for (let i = 0; i < results.length; i++) {
-                    const res = results[i];
-                    if (res !== null && res !== undefined) {
-                        let parsedData = res;
-                        if (typeof res === "string") {
-                            try {
-                                parsedData = JSON.parse(res);
-                            } catch (e) {
-                                // If parsing fails, keep as is
-                                parsedData = res;
-                            }
-                        }
-                        return { status: true, data: parsedData };
-                    }
-                }
-            }
-            return { status: false, data: null };
-
-        } catch (err: any) {
-            console.error("Error in checkFromToAddressInDB>>", err)
-            return { status: false, data: null };
-        }
-    }
-
-    public async addTxToQueue(data: TxType, queueName: string) {
+    private async addTxToQueue(data: TxType, queueName: string) {
         try {
             await kafkaHelper.produceMessage(queueName, data)
         } catch (err: any) {
@@ -567,7 +593,7 @@ class EthBlockProcess {
         }
     };
 
-    public getTransferEventDetail = async (
+    private getTransferEventDetail = async (
         tokenAddress: string,
         blockId: number
     ) => {

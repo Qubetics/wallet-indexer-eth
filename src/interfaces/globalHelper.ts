@@ -2,14 +2,14 @@ import { CoinInterface } from "../models";
 
 export interface blocksTrnx {
     // export interface blocks_trnx {
-    block_number: number,
-    tx_id: string | '',
+    blockNumber: number,
+    txId: string | '',
     value: string | '',
     fromAddress: string | '',
     toAddress: string | '',
-    retry_count: number,
-    key: string | null,
-    pair: string | null,
+    // retry_count: number,
+    // key: string | null,
+    // pair: string | null,
     gasUsed: number | null,
     gasPrice: number | null
 }
