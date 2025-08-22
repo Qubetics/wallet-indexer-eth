@@ -562,7 +562,7 @@ class EthBlockProcess {
                         amount,
                         blockId: data?.blockNumber,
                         isNFTToken: false,
-                        txType: null,
+                        txType: txType,
                         trnx_fee: Number(gasInEth)
                     };
                     await this.addTxToQueue(
