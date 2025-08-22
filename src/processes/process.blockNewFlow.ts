@@ -317,7 +317,7 @@ class EthBlockProcess {
         return await blockChainHelper.provider.send("eth_getBlockReceipts", [formattedBlockValue]);
     };
 
-    private processTxReceipt = async (txReceipt: any) => {
+    private processTxReceipt = async (txReceipt: TransactionReceipt) => {
         // Only process successful transactions with logs
         if (!txReceipt?.status || !txReceipt?.logs?.length) {
             return;
@@ -333,7 +333,7 @@ class EthBlockProcess {
 
     private extractGasInfo = async (txReceipt: any) => {
         const gasUsed = txReceipt.gasUsed ? Number(txReceipt.gasUsed) : 0;
-        const hexToNumberGasPrice = txReceipt?.gasPrice ? Number(txReceipt.gasPrice) : 0;
+        const hexToNumberGasPrice = txReceipt?.effectiveGasPrice ? Number(txReceipt.effectiveGasPrice) : 0;
         const txFee = await utilityHelper.bigNumberSafeMath(gasUsed, '*', hexToNumberGasPrice);
         const gasInEth = await blockChainHelper.convertWeiToEth(txFee);
 

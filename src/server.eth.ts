@@ -69,8 +69,8 @@ class ETHStartProcess {
   }
 
   public updateEthGasPriceCron = async () => {
-    schedule.scheduleJob("*/7 * * * * *", async function () {
-      console.log("Updating  gas  price  eth...")
+    schedule.scheduleJob("*/3 * * * * *", async function () {
+      console.log("Updating  every 3 seconds gas  price  eth...")
       await updateBalanceProcess.updateGasPrice();
     });
   };
