@@ -169,7 +169,7 @@ class EthTxStatusUpdateProcess {
     try {
       let coin_data: any = {};
       if (!txData.coin?.is_token) {
-        console.log('in case of coin');
+        // console.log('in case of coin');
         coin_data = await ethProcessHelper.checkIfContract('NativeCoin');
       } else if (txData.coin?.token_type == TokenStandard.ERC20) {
         coin_data = await ethProcessHelper.checkIfContract(txData.coin.token_address);
