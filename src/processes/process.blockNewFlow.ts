@@ -210,13 +210,13 @@ class EthBlockProcess {
                             if (call?.type == 'CALL' && callValue.gt(0)) {
                                 /** if internal calls present */
                                 if (call?.calls?.length > 0) {
-                                    for (const call3 of call?.calls) {
-                                        if (call3?.type == 'CALL' && call3?.value && Number(call3?.value) > 0) {
+                                    for (const call2 of call?.calls) {
+                                        if (call2?.type == 'CALL' && call2?.value && Number(call2?.value) > 0) {
                                             const callTxReceipt: blocksTrnx = {
                                                 txId: trace.txHash,
-                                                fromAddress: call3.from,
-                                                toAddress: call3.to,
-                                                value: Number(call3.value).toString(),
+                                                fromAddress: call2.from,
+                                                toAddress: call2.to,
+                                                value: Number(call2.value).toString(),
                                                 gasUsed: null,
                                                 gasPrice: null,
                                                 blockNumber: blockId
@@ -256,6 +256,18 @@ class EthBlockProcess {
                                             await this.checkEthDeposit(callTxReceipt)
                                         }
                                     }
+                                } else {
+                                    const callTxReceipt: blocksTrnx = {
+                                        txId: trace.txHash,
+                                        fromAddress: call.from,
+                                        toAddress: call.to,
+                                        value: callValue.toString(),
+                                        gasUsed: null,
+                                        gasPrice: null,
+                                        blockNumber: blockId
+                                    }
+
+                                    await this.checkEthDeposit(callTxReceipt);
                                 }
                             }
                         }
