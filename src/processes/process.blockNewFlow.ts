@@ -180,7 +180,7 @@ class EthBlockProcess {
                     const bigInitValue: BigInt | string = (trace?.result?.value === "0x0" || trace?.result?.value === "0n" || trace?.result?.value == null) ? "0" : ethers.toBigInt(trace?.result?.value);
                     const value: BigNumber = new BigNumber(bigInitValue.toString());
                     // Identify COIN transactions (typically Ether transfers)
-                    if (value.gt(0)) {
+                    if (trace?.result?.type == 'CALL' && value.gt(0)) {
                         // const bigInitGasUsed: BigInt | string = (trace?.result?.gasUsed === "0x0" || trace?.result?.gasUsed === "0n" || trace?.result?.gasUsed == null) ? "0" : ethers.toBigInt(trace?.result?.gasUsed);
                         // const gasPrice: BigInt | string = (trace?.result?.gas === "0x0" || trace?.result?.gas === "0n" || trace?.result?.gas == null) ? "0" : ethers.toBigInt(trace?.result?.gas);
 
@@ -207,21 +207,56 @@ class EthBlockProcess {
                             const callValue: BigNumber = new BigNumber(callBigInitValue.toString());
 
                             // Only process calls with non-zero value
-                            if (callValue.gt(0)) {
-                                // const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
-                                // const gasPrice: BigInt | string = (call.gas === "0x0" || call.gas === "0n" || call.gas == null) ? "0" : ethers.toBigInt(call.gas);
+                            if (call?.type == 'CALL' && callValue.gt(0)) {
+                                /** if internal calls present */
+                                if (call?.calls?.length > 0) {
+                                    for (const call3 of call?.calls) {
+                                        if (call3?.type == 'CALL' && call3?.value && Number(call3?.value) > 0) {
+                                            const callTxReceipt: blocksTrnx = {
+                                                txId: trace.txHash,
+                                                fromAddress: call3.from,
+                                                toAddress: call3.to,
+                                                value: Number(call3.value).toString(),
+                                                gasUsed: null,
+                                                gasPrice: null,
+                                                blockNumber: blockId
+                                            }
+                                            await this.checkEthDeposit(callTxReceipt)
+                                        }
+                                    }
+                                } else {
+                                    // const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
+                                    // const gasPrice: BigInt | string = (call.gas === "0x0" || call.gas === "0n" || call.gas == null) ? "0" : ethers.toBigInt(call.gas);
 
-                                const callTxReceipt: blocksTrnx = {
-                                    txId: trace.txHash,
-                                    fromAddress: call.from,
-                                    toAddress: call.to,
-                                    value: callValue.toString(),
-                                    gasUsed: null,
-                                    gasPrice: null,
-                                    blockNumber: blockId
+                                    const callTxReceipt: blocksTrnx = {
+                                        txId: trace.txHash,
+                                        fromAddress: call.from,
+                                        toAddress: call.to,
+                                        value: callValue.toString(),
+                                        gasUsed: null,
+                                        gasPrice: null,
+                                        blockNumber: blockId
+                                    }
+
+                                    await this.checkEthDeposit(callTxReceipt);
                                 }
-
-                                await this.checkEthDeposit(callTxReceipt);
+                            } else if (call?.type == 'DELEGATECALL' && callValue.gt(0)) {
+                                if (call?.calls?.length > 0) {
+                                    for (const call2 of call?.calls) {
+                                        if (call2?.type == 'CALL' && call2?.value && Number(call2?.value) > 0) {
+                                            const callTxReceipt: blocksTrnx = {
+                                                txId: trace.txHash,
+                                                fromAddress: call2.from,
+                                                toAddress: call2.to,
+                                                value: Number(call2.value).toString(),
+                                                gasUsed: null,
+                                                gasPrice: null,
+                                                blockNumber: blockId
+                                            }
+                                            await this.checkEthDeposit(callTxReceipt)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
