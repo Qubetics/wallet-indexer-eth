@@ -228,6 +228,8 @@ class EthBlockProcess {
                 }
             } else {
                 console.error("Error fetching data from QuickNode API.");
+                this.getTxFromBlock(blockId);
+
             }
         } catch (error) {
             console.log("🔥 ~ getTraceBlock error", (error as Error).message);
