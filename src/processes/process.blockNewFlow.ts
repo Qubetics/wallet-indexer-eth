@@ -574,7 +574,12 @@ class EthBlockProcess {
             if (
                 data.toAddress
             ) {
+
+                console.log("inside checkEthDeposit this is data.toAddress ", data.toAddress)
+
+
                 const addresses = [data.fromAddress, data.toAddress].filter(Boolean);
+                console.log("addresses hereeeeeeeeeee inside checkEthDeposit >>>", addresses);
                 let txType = null;
                 if (addresses.length > 0) {
                     const results = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
@@ -588,6 +593,11 @@ class EthBlockProcess {
                     }
                 }
                 if (txType !== null) {
+
+                    console.log("tx type hereeeeeeeeeee inside checkEthDeposit >>>", txType);
+
+
+
                     if (data.gasUsed == null && data.gasPrice == null) {
                         const txReceipt: TransactionReceipt | null = await blockChainHelper.provider.getTransactionReceipt(data?.txId);
                         const gasUsed: number = Number(txReceipt?.gasUsed) || 0;
@@ -614,6 +624,11 @@ class EthBlockProcess {
                         txType: txType,
                         trnx_fee: Number(gasInEth)
                     };
+
+                    console.log("txData addingggggggg hereeeeeeeeeee >>>", txData);
+
+
+
                     await this.addTxToQueue(
                         txData,
                         this.deposit_withdraw_topic || ""
