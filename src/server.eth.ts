@@ -2,6 +2,7 @@ import kafkaHelper from "./config/kafka.helper";
 // import { ethWithdrawDepositProcess, ethPendingWithdrawalProcess, ethTxStatusUpdateProcess, ethBlocksProcess, processedBlockTransactions, updateBalanceProcess } from "./processes/index.process"
 import { ethWithdrawDepositProcess, ethPendingWithdrawalProcess, ethTxStatusUpdateProcess, ethBlocksProcess, updateBalanceProcess } from "./processes/index.process"
 import schedule from "node-schedule";
+import { traceBlockEthProcess } from "./processes/processedTraceBlockEth";
 class ETHStartProcess {
   constructor() {
     this.connectKafka();
@@ -14,6 +15,7 @@ class ETHStartProcess {
     this.consumeInternalTxQueue();
     this.consumeUpdateBalanceQueue();
     this.updateEthGasPriceCron();
+    this.consumeTraceBlockEthTxsQueue();
   }
 
   public async connectKafka() {
@@ -52,6 +54,14 @@ class ETHStartProcess {
       await ethWithdrawDepositProcess.startDepositQueue();
     }, 10000);
   }
+   
+  public async consumeTraceBlockEthTxsQueue() {
+    setTimeout(async () => {
+      console.log("consumer TraceBlockEthTxsQueue started 🔆🔆🔆");
+      await traceBlockEthProcess.startTraceBlockEthProcess();
+    }, 10000);
+  }
+
   public internalTxsInQueue() {
     schedule.scheduleJob("*/10 * * * * *", async function () {
       await ethPendingWithdrawalProcess.getTransactionFromDB();

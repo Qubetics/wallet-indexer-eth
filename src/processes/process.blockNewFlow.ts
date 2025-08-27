@@ -25,6 +25,7 @@ class EthBlockProcess {
     public eth_block_tx_topic = config.KAFKA_BLOCKS.ETH_BLOCK_TX_TOPIC;
     public eth_behind_block_tx_topic = config.KAFKA_BLOCKS.ETH_BEHIND_BLOCK_TX_TOPIC;
     public deposit_withdraw_topic = config.KAFKA_TRANSACTIONS.DEPOSIT_WITHDRAW_TOPIC;
+    public trace_block_eth_deposit_topic = config.KAFKA_TRANSACTIONS.TRACE_BLOCK_ETH_DEPOSIT_TOPIC;
 
     constructor() {
         this.minBlockConfirmation = Number(config.MIN_BLOCK_CONFORMATIONS);
@@ -158,132 +159,111 @@ class EthBlockProcess {
         }
     }
 
-    public getTraceBlock = async (blockId: number) => {
-        try {
-            console.log("INSIDE getTraceBlock", blockId)
-            const hexBlockValue = ethers.toBeHex(blockId.toString());
-            const formattedBlockValue = hexBlockValue.replace(/^0x0+/g, '0x');
-            const response = await blockChainHelper.provider.send("debug_traceBlockByNumber", [formattedBlockValue,
-                {
-                    "tracer": "callTracer"
-                }]);
-
-            if (response?.length > 0) {
-                const traces = response;
-                // Loop through the traces and identify transaction types
-                for (const trace of traces) {
-                    if (trace?.error) {
-                        console.log("(trace?.error", trace?.error);
-                        return false;
-                    }
-                    // Process main trace 
-                    const bigInitValue: BigInt | string = (trace?.result?.value === "0x0" || trace?.result?.value === "0n" || trace?.result?.value == null) ? "0" : ethers.toBigInt(trace?.result?.value);
-                    const value: BigNumber = new BigNumber(bigInitValue.toString());
-                    // Identify COIN transactions (typically Ether transfers)
-                    if (trace?.result?.type == 'CALL' && value.gt(0)) {
-                        // const bigInitGasUsed: BigInt | string = (trace?.result?.gasUsed === "0x0" || trace?.result?.gasUsed === "0n" || trace?.result?.gasUsed == null) ? "0" : ethers.toBigInt(trace?.result?.gasUsed);
-                        // const gasPrice: BigInt | string = (trace?.result?.gas === "0x0" || trace?.result?.gas === "0n" || trace?.result?.gas == null) ? "0" : ethers.toBigInt(trace?.result?.gas);
-
-                        const txReceipt: blocksTrnx = {
-                            txId: trace.txHash,
-                            fromAddress: trace?.result?.from,
-                            toAddress: trace?.result?.to,
-                            value: value.toString(),
-                            gasUsed: null,
-                            gasPrice: null,
-                            blockNumber: blockId
-                        }
-
-                        await this.checkEthDeposit(txReceipt);
-                    }
-                    // Process calls with non-zero value
-                    else if (trace?.result?.calls && trace?.result?.calls.length > 0) {
-                        for (const call of trace?.result?.calls) {
-                            if (call?.error) {
-                                console.log("(call?.error", call?.error);
-                                return false;
-                            }
-                            const callBigInitValue: BigInt | string = (call.value === "0x0" || call.value === "0n" || call.value == null) ? "0" : ethers.toBigInt(call.value);
-                            const callValue: BigNumber = new BigNumber(callBigInitValue.toString());
-
-                            // Only process calls with non-zero value
-                            if (call?.type == 'CALL' && callValue.gt(0)) {
-                                /** if internal calls present */
-                                if (call?.calls?.length > 0) {
-                                    for (const call2 of call?.calls) {
-                                        if (call2?.type == 'CALL' && call2?.value && Number(call2?.value) > 0) {
-                                            const callTxReceipt: blocksTrnx = {
-                                                txId: trace.txHash,
-                                                fromAddress: call2.from,
-                                                toAddress: call2.to,
-                                                value: Number(call2.value).toString(),
-                                                gasUsed: null,
-                                                gasPrice: null,
-                                                blockNumber: blockId
-                                            }
-                                            await this.checkEthDeposit(callTxReceipt)
-                                        }
-                                    }
-                                } else {
-                                    // const callBigInitGasUsed: BigInt | string = (call.gasUsed === "0x0" || call.gasUsed === "0n" || call.gasUsed == null) ? "0" : ethers.toBigInt(call.gasUsed);
-                                    // const gasPrice: BigInt | string = (call.gas === "0x0" || call.gas === "0n" || call.gas == null) ? "0" : ethers.toBigInt(call.gas);
-
-                                    const callTxReceipt: blocksTrnx = {
-                                        txId: trace.txHash,
-                                        fromAddress: call.from,
-                                        toAddress: call.to,
-                                        value: callValue.toString(),
-                                        gasUsed: null,
-                                        gasPrice: null,
-                                        blockNumber: blockId
-                                    }
-
-                                    await this.checkEthDeposit(callTxReceipt);
-                                }
-                            } else if (call?.type == 'DELEGATECALL' && callValue.gt(0)) {
-                                if (call?.calls?.length > 0) {
-                                    for (const call2 of call?.calls) {
-                                        if (call2?.type == 'CALL' && call2?.value && Number(call2?.value) > 0) {
-                                            const callTxReceipt: blocksTrnx = {
-                                                txId: trace.txHash,
-                                                fromAddress: call2.from,
-                                                toAddress: call2.to,
-                                                value: Number(call2.value).toString(),
-                                                gasUsed: null,
-                                                gasPrice: null,
-                                                blockNumber: blockId
-                                            }
-                                            await this.checkEthDeposit(callTxReceipt)
-                                        }
-                                    }
-                                } else {
-                                    const callTxReceipt: blocksTrnx = {
-                                        txId: trace.txHash,
-                                        fromAddress: call.from,
-                                        toAddress: call.to,
-                                        value: callValue.toString(),
-                                        gasUsed: null,
-                                        gasPrice: null,
-                                        blockNumber: blockId
-                                    }
-
-                                    await this.checkEthDeposit(callTxReceipt);
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                console.error("Error fetching data from QuickNode API.");
-                this.getTxFromBlock(blockId);
-
+    // Recursive function to collect calls dynamically
+    public collectCalls(calls: any[], depth: number = 0, results: any[] = [], txHash?: string): any[] {
+        for (const call of calls) {
+            if (call?.error) {
+              console.log("(call?.error", call?.error,'txHash >>>', txHash);
+            }else{
+              if (call?.value && Number(call.value) > 0) {
+                results.push({
+                  depth,
+                  type: call.type,
+                  txHash: txHash,
+                  value: call.value,
+                  callData: call,
+                });
+              }
+              // If nested calls exist, process them recursively
+              if (call?.calls?.length > 0) {
+                this.collectCalls(call.calls, depth + 1, results, txHash);
+              }
             }
-        } catch (error) {
-            console.log("🔥 ~ getTraceBlock error", (error as Error).message);
-            this.getTxFromBlock(blockId);
-        }
-    };
+          }
+          return results;
+        
+    }
 
+    public async processTraces(response: any[]) {
+        const allCalls: any[] = [];
+      
+        if (response?.length > 0) {
+          for (const trace of response) {
+            const result = trace?.result;
+           
+            if(!result?.error){
+               // Top-level CALL
+                    if (result?.type === 'CALL' && Number(result?.value) > 0) {
+                    
+                        allCalls.push({
+                        depth: 0,
+                        type: result.type,
+                        value: result.value,
+                        txHash: trace.txHash,
+                        callData: result,
+                        });
+                    
+                    }
+                    // Collect child calls if they exist
+                    if (result?.calls?.length > 0) {
+                    const collected = this.collectCalls(result.calls, 1, [],trace.txHash);
+                    allCalls.push(...collected);
+                    }
+            }else{
+                console.log("(result?.error", result?.error,'trace.txHash <<', trace.txHash);
+            }
+        }
+        }
+      
+        return allCalls;
+      }
+      
+  
+      public getTraceBlock = async (blockId: number) => {
+        try {
+          console.log("INSIDE getTraceBlock", blockId);
+      
+          const hexBlockValue = ethers.toBeHex(blockId.toString());
+          const formattedBlockValue = hexBlockValue.replace(/^0x0+/g, '0x');
+      
+          const response = await blockChainHelper.provider.send("debug_traceBlockByNumber", [
+            formattedBlockValue,
+            { "tracer": "callTracer" }
+          ]);
+      
+          if (response?.length > 0) {
+            const allValueCalls = await this.processTraces(response);
+      
+            // console.log("All calls with value > 0:", allValueCalls);
+      
+            // Save to Kafka
+            for (const call of allValueCalls) {
+              const txReceipt: blocksTrnx = {
+                txId: call.txHash,
+                fromAddress: call.callData.from,
+                toAddress: call.callData.to,
+                value: call.value.toString(),
+                gasUsed: null,
+                gasPrice: null,
+                blockNumber: blockId,
+              };
+      
+            //   console.log(`Processed Tx at depth ${call.depth}`, txReceipt);
+              this.addTraceTxToQueue(txReceipt, this.trace_block_eth_deposit_topic);
+            }
+      
+          } else {
+            console.error("Error fetching data from QuickNode API.");
+            this.getTxFromBlock(blockId);
+          }
+      
+        } catch (error) {
+          console.log("🔥 ~ getTraceBlock error", (error as Error).message);
+          this.getTxFromBlock(blockId);
+        }
+      };
+      
+    
     public getBlockReceipts = async (blockId: number) => {
         try {
             console.log("INSIDE getBlockReceipts")
@@ -568,21 +548,22 @@ class EthBlockProcess {
         return await utilityHelper.bigNumberSafeMath(data, '/', Math.pow(10, decimalPrecision));
     };
 
-    private async checkEthDeposit(data: blocksTrnx) {
+    public async checkEthDeposit(data: blocksTrnx) {
         try {
             /** for check the eth deposit */
             if (
                 data.toAddress
             ) {
 
-                console.log("inside checkEthDeposit this is data.toAddress ", data.toAddress)
-
+                // console.log("inside checkEthDeposit this is data.toAddress ", data.toAddress)
 
                 const addresses = [data.fromAddress, data.toAddress].filter(Boolean);
-                console.log("addresses hereeeeeeeeeee inside checkEthDeposit >>>", addresses);
+                
                 let txType = null;
                 if (addresses.length > 0) {
                     const results = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
+
+
                     if (results) {
                         const [withdrawTx, depositTx] = results as string[];
                         if (depositTx) {
@@ -593,10 +574,6 @@ class EthBlockProcess {
                     }
                 }
                 if (txType !== null) {
-
-                    console.log("tx type hereeeeeeeeeee inside checkEthDeposit >>>", txType);
-
-
 
                     if (data.gasUsed == null && data.gasPrice == null) {
                         const txReceipt: TransactionReceipt | null = await blockChainHelper.provider.getTransactionReceipt(data?.txId);
@@ -624,10 +601,6 @@ class EthBlockProcess {
                         txType: txType,
                         trnx_fee: Number(gasInEth)
                     };
-
-                    console.log("txData addingggggggg hereeeeeeeeeee >>>", txData);
-
-
 
                     await this.addTxToQueue(
                         txData,
@@ -673,6 +646,16 @@ class EthBlockProcess {
     }
 
     private async addTxToQueue(data: TxType, queueName: string) {
+        try {
+            await kafkaHelper.produceMessage(queueName, data)
+        } catch (err: any) {
+            console.error("addTxToQueue", (err as Error).message);
+            await globalHelper.saveErrorLogs('ETH_checkAddressInDB', err.message)
+
+        }
+    };
+
+    private async addTraceTxToQueue(data: blocksTrnx, queueName: string) {
         try {
             await kafkaHelper.produceMessage(queueName, data)
         } catch (err: any) {
