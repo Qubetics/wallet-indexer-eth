@@ -1,6 +1,6 @@
 
 // export * from './procesedBlocks';
-export * from './process.blockNewFlow';
+export * from './procesedBlocks';
 // export * from './processedBlocksTransactions';
 export * from "./processedDepositWithdrawTransactions";
 export * from "./processedInternalTransactions";

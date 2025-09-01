@@ -1,7 +1,7 @@
 
 import { config } from "../config/config";
 import kafkaHelper from "../config/kafka.helper";
-import { ethBlocksProcess } from "./process.blockNewFlow";
+import { ethBlocksProcess } from "./procesedBlocks";
 
 class TraceBlockEthProcess {
 
