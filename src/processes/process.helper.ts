@@ -357,24 +357,7 @@ class EthProcessHelper {
     userId: number
   ) {
     try {
-      //will  be  updated  later 
-      // const swapSupported: number = 0;
-
-      // const graphSource: string | null = null;
-      // const graphPair: string | null = null;
-
-      // if (tokenAddress && symbol) {
-      //   // remove this added through the cron job
-      //   // const tradingViewData = await globalHelper.getTradingSource(symbol);
-      //   // console.log("tradingViewData >>>", tradingViewData);
-      //   // if (tradingViewData.status) {
-      //   //   graphSource = tradingViewData.graphSource;
-      //   //   graphPair = tradingViewData.graphPair;
-      //   // }
-      //   console.log("skipping graphSource >>>", graphSource);
-      //   console.log("skipping graphPair >>>", graphPair);
-      // }
-
+     
       const coinData: any = {
         coin_name: name,
         coin_symbol: symbol.toUpperCase(),

@@ -14,7 +14,9 @@ class ETHStartProcess {
     this.internalTxsInQueue();
     this.consumeInternalTxQueue();
     this.consumeUpdateBalanceQueue();
-    this.updateEthGasPriceCron();
+    
+    //Not required on production
+    // this.updateEthGasPriceCron();
     this.consumeTraceBlockEthTxsQueue();
   }
 
@@ -78,12 +80,12 @@ class ETHStartProcess {
     }, 10000);
   }
 
-  public updateEthGasPriceCron = async () => {
-    schedule.scheduleJob("*/3 * * * * *", async function () {
-      console.log("Updating  every 3 seconds gas  price  eth...")
-      await updateBalanceProcess.updateGasPrice();
-    });
-  };
+  // public updateEthGasPriceCron = async () => {
+  //   schedule.scheduleJob("*/3 * * * * *", async function () {
+  //     console.log("Updating  every 3 seconds gas  price  eth...")
+  //     await updateBalanceProcess.updateGasPrice();
+  //   });
+  // };
   
 }
 
