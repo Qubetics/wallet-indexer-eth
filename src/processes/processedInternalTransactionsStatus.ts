@@ -167,16 +167,16 @@ class EthTxStatusUpdateProcess {
 
   public sendTxUpdate = async (txData: TxUpdateData) => {
     try {
-      let coin_data: any = {};
+      let coinData: any = {};
       if (!txData.coin?.is_token) {
         // console.log('in case of coin');
-        coin_data = await ethProcessHelper.checkIfContract('NativeCoin');
+        coinData = await ethProcessHelper.checkIfContract('NativeCoin');
       } else if (txData.coin?.token_type == TokenStandard.ERC20) {
-        coin_data = await ethProcessHelper.checkIfContract(txData.coin.token_address);
+        coinData = await ethProcessHelper.checkIfContract(txData.coin.token_address);
       } else if (txData.coin?.token_type == TokenStandard.ERC1155 || txData.coin?.token_type == TokenStandard.ERC721) {
-        coin_data = await ethProcessHelper.checkIfOurNFTContract(txData.coin.token_address);
+        coinData = await ethProcessHelper.checkIfOurNFTContract(txData.coin.token_address);
       }
-      if (coin_data) {
+      if (coinData) {
         const trx_data: TransactionData = {
           coin_id: txData.coin?.coin_id,
           status: txData?.status,
@@ -186,16 +186,16 @@ class EthTxStatusUpdateProcess {
           fromAddress: txData?.fromAddress,
           coin: {
             coin_id: txData.coin.coin_id,
-            coin_name: coin_data.coin_name || '',
-            coin_symbol: coin_data.coin_symbol,
-            coin_family: coin_data.coin_family,
-            coin_status: coin_data.coin_status || 0,
-            is_token: coin_data.is_token,
-            token_type: coin_data.token_type,
-            decimals: coin_data.decimals || 0,
-            // cmc_id: coin_data.cmc_id,
-            token_address: Number(coin_data.is_token) === Number(BooleanEnum.true) ? coin_data.token_address : coin_data.coin_symbol,
-            added_by: coin_data.added_by
+            coin_name: coinData.coin_name || '',
+            coin_symbol: coinData.coin_symbol,
+            coin_family: coinData.coin_family,
+            coin_status: coinData.coin_status || 0,
+            is_token: coinData.is_token,
+            token_type: coinData.token_type,
+            decimals: coinData.decimals || 0,
+            // cmc_id: coinData.cmc_id,
+            token_address: Number(coinData.is_token) === Number(BooleanEnum.true) ? coinData.token_address : coinData.coin_symbol,
+            added_by: coinData.added_by
           }
         };
         console.log(trx_data, "withdrwal");
@@ -246,8 +246,8 @@ class EthTxStatusUpdateProcess {
             if (addressWithdraw) {
               /** update withdraw user eth balance */
               if (tx_type !== TrnxTypeEnum.DAPP) {
-                const native_coin: any = await ethProcessHelper.checkIfContract('NativeCoin');
-                await walletHelper.updateBalance(from_address, native_coin);
+                const nativeCoin: any = await ethProcessHelper.checkIfContract('NativeCoin');
+                await walletHelper.updateBalance(from_address, nativeCoin);
                 if (trx_data?.coin?.is_token === BooleanEnum.true && trx_data.coin?.token_type?.toLowerCase() === TokenStandard.ERC20.toLowerCase()) {
                   /** Update User ERC20 Token Balance */
                   await walletHelper.updateBalance(from_address, trx_data?.coin);
@@ -273,8 +273,10 @@ class EthTxStatusUpdateProcess {
                 default:
                   break;
               }
-              const notiMsg = trx_data.coin?.token_type == TokenStandard.ERC721 ?
-                `${trnxTypeW} request of NFT(${coin_symbol.toUpperCase()} ) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await utilityHelper.bigNumberSafeConversion(amount)} ${coin_symbol.toUpperCase()} has been confirmed.`;
+
+              const isNft = trx_data?.coin?.token_type?.toLowerCase() === TokenStandard.ERC721.toLowerCase() || trx_data?.coin?.token_type?.toLowerCase() === TokenStandard.ERC1155.toLowerCase();
+
+              const notiMsg = isNft ? `${trnxTypeW} request of NFT(${coin_symbol.toUpperCase()} ) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await utilityHelper.bigNumberSafeConversion(amount)} ${coin_symbol.toUpperCase()} has been confirmed.`;
 
               const notifData: NotificationInterface = {
                 title: trnxTypeW.toUpperCase(),
@@ -310,8 +312,10 @@ class EthTxStatusUpdateProcess {
                   await walletHelper.updateAllActiveCoinBalance(to_address, coin_family);
                 }
               }
-              const notiMsg = trx_data?.coin?.token_type == TokenStandard.ERC721 ?
-                `Deposit of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been confirmed.` : `Deposit of ${await utilityHelper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been confirmed.`;
+
+              const isNft = trx_data?.coin?.token_type?.toLowerCase() === TokenStandard.ERC721.toLowerCase() || trx_data?.coin?.token_type?.toLowerCase() === TokenStandard.ERC1155.toLowerCase();
+
+              const notiMsg = isNft ? `Deposit of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been confirmed.` : `Deposit of ${await utilityHelper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been confirmed.`;
 
               const notifData: NotificationInterface = {
                 title: NotificationTypeEnum.DEPOSIT.toUpperCase(),
@@ -353,8 +357,12 @@ class EthTxStatusUpdateProcess {
               break;
           }
 
-          const notiMsg = trx_data?.coin?.token_type == TokenStandard.ERC721 ?
-            `${trnxTypeW} of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been failed.` : `${trnxTypeW} of ${await utilityHelper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been failed.`;
+          const nativeCoin: any = await ethProcessHelper.checkIfContract('NativeCoin');
+          await walletHelper.updateBalance(from_address, nativeCoin);
+
+          const isNft = trx_data?.coin?.token_type?.toLowerCase() === TokenStandard.ERC721.toLowerCase() || trx_data?.coin?.token_type?.toLowerCase() === TokenStandard.ERC1155.toLowerCase();
+
+          const notiMsg = isNft ? `${trnxTypeW} of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been failed.` : `${trnxTypeW} of ${await utilityHelper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been failed.`;
 
           const notifData: NotificationInterface = {
             title: trnxTypeW.toUpperCase(),
