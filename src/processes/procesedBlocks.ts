@@ -16,6 +16,7 @@ import { TokenData } from "../interfaces/ether.interface";
 class EthBlockProcess {
     public minBlockConfirmation: number;
     public swap: string | null;
+    public swapV2: string | null;
     public approval: string | null;
     public transfer_by_partition: string | null;
     public approval_by_partition: string | null;
@@ -30,6 +31,7 @@ class EthBlockProcess {
     constructor() {
         this.minBlockConfirmation = Number(config.MIN_BLOCK_CONFORMATIONS);
         this.swap = ethers.id('Swap(address,uint256,uint256,uint256,uint256,address)');
+        this.swapV2 = ethers.id('Swap(address,address,int256,int256,uint160,uint128,int24)');
         this.approval = ethers.id('Approval(address,address,uint256)');
         this.transfer_by_partition = ethers.id('TransferByPartition(bytes32,address,address,address,uint256,bytes,bytes)');
         this.approval_by_partition = ethers.id('ApprovalByPartition(bytes32,address,address,uint256)');
@@ -448,7 +450,9 @@ class EthBlockProcess {
             this.approval_by_partition,
             this.transfer_by_partition,
             this.processed_dividend_tracker,
-            this.dividend_withdrawn
+            this.dividend_withdrawn,
+            this.swap,
+            this.swapV2
         ];
         return excludedTopics.includes(topic);
     };
