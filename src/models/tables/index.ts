@@ -10,6 +10,7 @@ import catchErrorMsgsModel from './model.catchErrorLogs';
 import walletModel from './model.wallets';
 // import coinPriceInFiatModel from './model.coinPriceFiats';
 import customTokennModel from './model.customTokens';
+import fakeTokensModel from './model.fakeToken';
 
 export {
     coinsModel,
@@ -23,5 +24,6 @@ export {
     // referralModel,
     walletModel,
     // coinPriceInFiatModel,
-    customTokennModel
+    customTokennModel,
+    fakeTokensModel
 }

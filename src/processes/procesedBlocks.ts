@@ -11,7 +11,7 @@ import { TxType } from "../types/ERC20Tokens.types";
 import { BigNumber } from "bignumber.js";
 import { ethEther } from "../helpers/ether_eth_helpers";
 import { TokenData } from "../interfaces/ether.interface";
-
+import { isValidToken } from "../helpers/validToken.helper";
 
 class EthBlockProcess {
     public minBlockConfirmation: number;
@@ -404,6 +404,14 @@ class EthBlockProcess {
                                 console.log("contractInfo not exist in db 💥💥 inserting into db", log.address)
                                 const tokenDetail: TokenData | null = await ethEther.tokenDetails(log.address);
                                 if (tokenDetail) {
+                                    //here we need to check valid token address
+                                    const isValidTokenAddress : boolean = await isValidToken(log.address);
+
+                                    //if not valid token address, return
+                                    if (!isValidTokenAddress) {
+                                        return;
+                                    }
+
                                     const contractInfo = await ethProcessHelper.insertTokenAddressInDB(log.address, tokenDetail, nativeWalletData);
                                     if (contractInfo) {
                                         await this.processNotExistTokenTransfer(log, gasInfo, contractInfo, TrnxTypeEnum.DEPOSIT)

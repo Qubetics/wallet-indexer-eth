@@ -35,7 +35,8 @@ export const config = {
     ALL_PROCESSES: zookeeperConfig.config.ALL_PROCESSES,
     ETH_ERROR_LOGS: zookeeperConfig.config.ETH_ERROR_LOGS,
     NODE_ALERT_ETH: zookeeperConfig.config.NODE_ALERT_ETH,
-    SPECIFIC_BLOCK_ETH: zookeeperConfig.config.SPECIFIC_BLOCK_ETH
+    SPECIFIC_BLOCK_ETH: zookeeperConfig.config.SPECIFIC_BLOCK_ETH,
+    FAKE_TOKENS: `${name}_${zookeeperConfig.config.SERVER}_eth_fake_tokens`,
   },
 
   TOKENLIST: {
