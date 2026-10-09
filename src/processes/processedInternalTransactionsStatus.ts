@@ -87,19 +87,6 @@ class EthTxStatusUpdateProcess {
     await startWithReconnection();
   };
 
-  // public startTxStatusUpdateQueue = async () => {
-  //   const consumer = await kafkaHelper.kafka.consumer({ groupId: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_GROUP_ID });
-  //   await consumer.subscribe({ topic: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_TOPIC, fromBeginning: true });
-  //   await consumer.run({
-  //     eachMessage: async ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-  //       console.log("🚀 ~ startTxStatusUpdateQueue topic >>>>", topic);
-  //       console.log("🚀 ~ startTxStatusUpdateQueue message.value >>>>", message.value.toString());
-  //       await this.getTx(JSON.parse(message.value.toString()))
-  //     }
-  //   }).catch((err: Error) => {
-  //     console.log("🔥 ~ ~ startTxStatusUpdateQueue error", err);
-  //   });
-  // };
 
   public getTx = async (data: pendingTrnx) => {
     console.log('Pending data >>>>>>>', data);
@@ -169,7 +156,6 @@ class EthTxStatusUpdateProcess {
     try {
       let coinData: any = {};
       if (!txData.coin?.is_token) {
-        // console.log('in case of coin');
         coinData = await ethProcessHelper.checkIfContract('NativeCoin');
       } else if (txData.coin?.token_type == TokenStandard.ERC20) {
         coinData = await ethProcessHelper.checkIfContract(txData.coin.token_address);
@@ -193,7 +179,6 @@ class EthTxStatusUpdateProcess {
             is_token: coinData.is_token,
             token_type: coinData.token_type,
             decimals: coinData.decimals || 0,
-            // cmc_id: coinData.cmc_id,
             token_address: Number(coinData.is_token) === Number(BooleanEnum.true) ? coinData.token_address : coinData.coin_symbol,
             added_by: coinData.added_by
           }
@@ -238,11 +223,7 @@ class EthTxStatusUpdateProcess {
           const results = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
           if (results) {
             const [addressWithdraw, addressDeposit]: any = results as string[];
-            // const AddressWithdraw: any = await ethProcessHelper.check_our_wallet_address(from_address);
-            // const Addressdeposit: any = await ethProcessHelper.check_our_wallet_address(to_address);
 
-            // Validate that results is an object with address keys
-            //const AddressWithdraw: any = await ethProcessHelper.check_our_wallet_address(from_address);
             if (addressWithdraw) {
               /** update withdraw user eth balance */
               if (tx_type !== TrnxTypeEnum.DAPP) {
@@ -291,11 +272,9 @@ class EthTxStatusUpdateProcess {
                 coin_family: trx_data?.coin.coin_family,
                 tx_type: tx_type,
                 notification_type: trnxTypeW,
-                // state: "confirmed"
               };
               utilityHelper.SendNotification(notifData);
             }
-            //const Addressdeposit: any = await ethProcessHelper.check_our_wallet_address(to_address);
             if (addressDeposit) {
               const to_user_id: number = addressDeposit ? JSON.parse(addressDeposit)?.user_id : 0;
               /** update to adrs wallet balance */
@@ -330,7 +309,6 @@ class EthTxStatusUpdateProcess {
                 coin_family: trx_data?.coin?.coin_family,
                 tx_type: NotificationTypeEnum.DEPOSIT,
                 notification_type: 'Deposit',
-                // state: "confirmed"
               };
               utilityHelper.SendNotification(notifData);
             }
@@ -377,7 +355,6 @@ class EthTxStatusUpdateProcess {
             coin_family: trx_data?.coin?.coin_family,
             tx_type: tx_type,
             notification_type: trnxTypeW,
-            // state: "failed"
           };
           utilityHelper.SendNotification(notifData);
 
