@@ -24,11 +24,6 @@ class ETHStartProcess {
       await ethBlocksProcess.readBehindBlocks()
     });
   }
-  // public testing_node() {
-  //   schedule.scheduleJob("*/2 * * * * *", async function () {
-  //     await eth_blocks_process.testingNode();
-  //   });
-  // }
   public readSpecificBlock() {
     schedule.scheduleJob('*/1 * * * *', async function () {
       await ethBlocksProcess.readSpecificBlock();

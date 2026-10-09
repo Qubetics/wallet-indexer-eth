@@ -62,25 +62,6 @@ class EthProcessHelper {
     }
   }
 
-  // public async setBlocks(field: string, key: string, minBlockConfirmation: number, newBlock: number | null) {
-  //   try {
-  //     let latestBlock = await blockChainHelper.provider.getBlockNumber();
-  //     /** Minus Buffer Block From Latest Block */
-  //     latestBlock = latestBlock - minBlockConfirmation;
-  //     if (newBlock) {
-  //       if (newBlock < latestBlock) {
-  //         await ethProcessHelper.setKeyValuePair(field, key, latestBlock.toString())
-  //       } else {
-  //         console.log("No updation of blocks")
-  //       }
-  //     } else {
-  //       await ethProcessHelper.setKeyValuePair(field, key, latestBlock.toString())
-  //     }
-  //   } catch (err: any) {
-  //     console.error("Error in  getBlocks", err)
-  //     await globalHelper.saveErrorLogs('ETH_setBlocks', err.message)
-  //   }
-  // }
 
   public async setKeyValuePair(keyName: string, field: string, value: string) {
     try {
@@ -92,23 +73,6 @@ class EthProcessHelper {
 
   public async diff_blocks_add_in_db(current_block: number, old_block: number) {
     try {
-      // const value_exist: any = await this.getKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH)
-      // if (value_exist) {
-      //   const setvalue: number = Number(value_exist) + 1;
-      //   if (Number(value_exist) <= 100) {
-      //     await this.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH, setvalue.toString())
-      //     if (Number(value_exist) == 0 || Number(value_exist) == 5 || Number(value_exist) == 10 || Number(value_exist) == 20 || Number(value_exist) == 50 || Number(value_exist) == 75 || Number(value_exist) == 100) {
-      //       let email_body = `<p>Ethereum Node Issue ${Number(value_exist)}</p><p>Current block running = ${current_block}.</p><p>Old Block = ${old_block}.</p>`;
-      //       await global_helper.sendMail(config.NODE_ISSUE_ALERT_EMAIL, email_body, `Ethereum Node Issue ${Number(value_exist)}`);
-      //     } else {
-      //       console.log("no email")
-      //     }
-      //   } else {
-      //     console.log("Number(value_exist) > 100")
-      //   }
-      // } else {
-      //   await this.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH, '0')
-      // }
       const dataToInsert = { block_number: old_block, coin_family: config.STATIC_COIN_FAMILY.ETH, start_block: old_block, end_block: current_block, status: 0 }
       console.log("dataToInsert>>>>", dataToInsert)
       await ethOldBLockModel.create(dataToInsert)
@@ -154,9 +118,7 @@ class EthProcessHelper {
           [Op.or]: [{ token_type: TokenStandard.ERC20 }, { token_type: null }]
         },
         raw: true,
-        // logging: true
       });
-      // console.log('`${config.TOKEN_TYPE_ETH}`', `${config.TOKEN_TYPE_ETH}`)
       for await (const token of tokens) {
         const findTokenData = await this.getKeyValuePair(
           `${config.TOKEN_TYPE_ETH}`,
@@ -166,13 +128,11 @@ class EthProcessHelper {
           this.setKeyValuePair(
             `${config.TOKEN_TYPE_ETH}`,
             token.token_address == null ? 'NativeCoin'.toUpperCase() : token.token_address.toUpperCase(),
-            // token.token_address.toUpperCase(),
             JSON.stringify(token)
           );
         }
       }
 
-      // redisClient.set(config.TOKEN_TYPE_ETH || "", JSON.stringify(tokens));
     } catch (err: any) {
       console.error('fetchERC20Tokens >>>>>', err);
       await globalHelper.saveErrorLogs('ETH_fetchERC20Tokens', err.message)
@@ -207,9 +167,6 @@ class EthProcessHelper {
   public checkIfContract = async (address: string) => {
     try {
       const token_data: any = await this.getKeyValuePair(config.TOKEN_TYPE_ETH, address);
-      // if (token_data) {
-      //   console.log("token_data>>>>>>>>", token_data)
-      // }
       return JSON.parse(token_data);
     } catch (err: any) {
       console.error('check_our_wallet_address >>>>>', err);
@@ -217,22 +174,6 @@ class EthProcessHelper {
     }
   };
 
-  // public checkIfContract = async (address: string) => {
-  //   try {
-  //     const getAsync = promisify(redisClient.get).bind(redisClient);
-  //     const value = await getAsync(config.TOKEN_TYPE_ETH || "");
-
-  //     const erc20Tokens: CoinInterface[] = value ? JSON.parse(value) : [];
-  //     const token = erc20Tokens.find(
-  //       (el: any) => Number(el.is_token) === Number(BooleanEnum.true) && el.token_address?.toUpperCase() === address?.toUpperCase()
-  //     );
-  //     if (token) return token;
-  //     return null;
-  //   } catch (error: any) {
-  //     console.error('checkIfContract >>>', error);
-  //     return null;
-  //   }
-  // };
 
   public fetchERC721Tokens = async () => {
     try {
@@ -284,41 +225,6 @@ class EthProcessHelper {
   };
 
 
-  // public NativeCoinByCoinFamily = async (
-  //   coin_family: CoinFamilyEnum
-  // ) => {
-  //   try {
-  //     const getAsync = promisify(redisClient.get).bind(redisClient);
-  //     const value = await getAsync(config.TOKEN_TYPE_ETH || "");
-
-  //     const erc20Tokens: CoinInterface[] = value ? JSON.parse(value) : [];
-  //     return erc20Tokens.find(
-  //       (el: CoinInterface) => Number(el.is_token) === Number(BooleanEnum.false) && el.coin_family === coin_family
-  //     );
-
-  //   } catch (error: any) {
-  //     console.error(`NativeCoinByCoinFamily >>>`, error);
-  //     return 0;
-  //   }
-  // }
-
-  // public CoinByCoinId = async (
-  //   coin_id: number
-  // ) => {
-  //   try {
-  //     const getAsync = promisify(redisClient.get).bind(redisClient);
-  //     const value = await getAsync(config.TOKEN_TYPE_ETH || "");
-
-  //     const erc20Tokens: CoinInterface[] = value ? JSON.parse(value) : [];
-  //     return erc20Tokens.find(
-  //       (el: CoinInterface) => el.coin_id === coin_id
-  //     );
-
-  //   } catch (error: any) {
-  //     console.error(`CoinByCoinId >>>`, error);
-  //     return null;
-  //   }
-  // }
   public behindBlocks = async () => {
     try {
       const behindBlocks: any = await ethOldBLockModel.findOne({

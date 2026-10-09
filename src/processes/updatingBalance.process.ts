@@ -83,20 +83,6 @@ class UpdateBalanceController {
         await startWithReconnection();
     };
 
-    // public update_wallet_balance = async () => {
-    // public updateWalletBalance = async () => {
-    //     const consumer = await kafkaHelper.kafka.consumer({ groupId: config.config.KAFKA_BALANCE.ETH_PENDING_BALANCE_UPDATE_GROUP_ID });
-    //     await consumer.subscribe({ topic: this.eth_pending_balance_update_topic, fromBeginning: true });
-    //     await consumer.run({
-    //         eachMessage: async ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-    //             console.log("🚀 ~ startTxStatusUpdateQueue topic >>>>", topic);
-    //             console.log("🚀 ~ startTxStatusUpdateQueue message.value >>>>", message.value.toString());
-    //             await this.updateBalance(JSON.parse(message.value.toString()))
-    //         }
-    //     }).catch((err: Error) => {
-    //         console.log("🔥 ~ ~ startTxStatusUpdateQueue error", err);
-    //     });
-    // };
 
     public updateBalance = async (data: balanceUpdateQueue) => {
         try {
@@ -126,7 +112,6 @@ class UpdateBalanceController {
             console.error("Error in updateBalance", err)
         }
     }
-
 
 
 }

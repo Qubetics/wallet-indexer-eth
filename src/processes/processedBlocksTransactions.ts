@@ -102,18 +102,6 @@ class ProcessedBlockTransactions {
         await startWithReconnection();
     };
 
-    // public startBlockTxQueue = async () => {
-    //     const consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_block_tx_group_id });
-    //     await consumer.subscribe({ topic: this.eth_block_tx_topic, fromBeginning: true });
-
-    //     await consumer.run({
-    //         eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-    //             this.readTrnx(JSON.parse(message.value.toString()))
-    //         }
-    //     }).catch((err: Error) => {
-    //         console.log("🔥 ~ startBlockTxQueue consumer error", err);
-    //     });
-    // };
 
     public startBehindBlockTxQueue = async () => {
         let consumer: any = null;
@@ -192,18 +180,7 @@ class ProcessedBlockTransactions {
         await startWithReconnection();
     };
 
-    // public startBehindBlockTxQueue = async () => {
-    //     const consumer = await kafkaHelper.kafka.consumer({ groupId: this.eth_behind_block_tx_group_id });
-    //     await consumer.subscribe({ topic: this.eth_behind_block_tx_topic, fromBeginning: true });
 
-    //     await consumer.run({
-    //         eachMessage: ({ topic, partition, message }: { topic: any, partition: any, message: any }) => {
-    //             this.readTrnx(JSON.parse(message.value.toString()))
-    //         }
-    //     }).catch((err: Error) => {
-    //         console.log("🔥 ~ startBehindBlockTxQueue consumer error", err);
-    //     });
-    // };
     public async readTrnx(data: blocksTrnx) {
         try {
             const txReceipt: TransactionReceipt | null = await blockChainHelper.provider.getTransactionReceipt(data.tx_id);
@@ -350,7 +327,6 @@ class ProcessedBlockTransactions {
     }
     public async checkAddressInDB(txData: TxType) {
         try {
-            // let ourTrnx: any = null;
             const addresses = [txData.fromAddress, txData.toAddress].filter(Boolean);
 
             if (addresses.length > 0) {
@@ -359,30 +335,13 @@ class ProcessedBlockTransactions {
                 if (results) {
                     const [withdrawTx, depositTx] = results as string[];
                     if (depositTx) {
-                        // console.log('Deposit results >>>', depositTx);
                         txData.txType = TrnxTypeEnum.DEPOSIT;
                     } else if (withdrawTx) {
-                        // console.log('Withdraw results >>>', withdrawTx);
                         txData.txType = TrnxTypeEnum.WITHDRAW;
                     }
-                    // ourTrnx = txData;
                 }
-                // return;
             }
-            // const withdraw = await ethProcessHelper.check_our_wallet_address(txData.fromAddress);
-            // if (withdraw) {
-            //     console.log("Found the user in FROM (WITHDRAW) tx 😸");
-            //     txData.txType = TrnxTypeEnum.WITHDRAW;
-            //     ourTrnx = txData;
-            // }
-            // const deposit = await ethProcessHelper.check_our_wallet_address(txData.toAddress);
-            // if (deposit) {
-            //     console.log("Found the user in to (DEPOSIT) tx 😸");
-            //     txData.txType = TrnxTypeEnum.DEPOSIT;
-            //     ourTrnx = txData;
-            // }
             if (txData.txType !== null) {
-                // console.log('ourTrnx.txType >>>', typeof txData.txType);
                 await this.addTxToQueue(
                     txData,
                     this.deposit_withdraw_topic || ""

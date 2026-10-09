@@ -4,7 +4,6 @@ import ethProcessHelper from "./process.helper";
 import { KEYS } from "../enum";
 import { blocksTrnx } from "../interfaces/globalHelper";
 import { ethOldBLockModel } from "../models";
-// import { Op } from "sequelize";
 import { globalHelper } from "../helpers/global.helper";
 import kafkaHelper from "../config/kafka.helper";
 import { ethers } from "ethers";
@@ -187,41 +186,8 @@ class EthBlockProcess {
             console.error("Error in readSpecificBlock>>>", error)
         }
     }
-    // public async testingNode() {
-    //     try {
-    //         const provider = Blockchain_Helper.provider;
 
-    //         // Get Block Number
-    //         const latestBlock = await provider.getBlockNumber();
-    //         console.log("Block number>>", latestBlock);
 
-    //         const blockInfo = await provider.getBlock(latestBlock, true);
-    //         console.log("blockInfo>>", blockInfo);
-
-    //         if (blockInfo && blockInfo.transactions.length > 0) {
-    //             let firstTxHash: string;
-    //             const firstTx = blockInfo.transactions[0];
-
-    //             if (typeof firstTx === 'string') {
-    //                 firstTxHash = firstTx;
-    //             } else {
-    //                 // Assert the type to access the hash property safely
-    //                 firstTxHash = (firstTx as ethers.TransactionResponse).hash;
-    //             }
-    //             // Get Block Receipt
-    //             const txReceipt = await provider.getTransactionReceipt(firstTxHash);
-    //             console.log("txreceipt>>", txReceipt);
-
-    //             // Get more details (not reduced in ethers.js)
-    //             const transaction = await provider.getTransaction(firstTxHash);
-    //             console.log("transaction>>", transaction);
-    //         } else {
-    //             console.log("No transactions found in the block");
-    //         }
-    //     } catch (err: any) {
-    //         console.error("Error in testingNode>>", err)
-    //     }
-    // }
 }
 
 export const ethBlocksProcess = new EthBlockProcess();
