@@ -88,38 +88,11 @@ class EthDepositWithdrawProcess {
     await startWithReconnection();
   };
 
-  // public startDepositQueue = async () => {
-  //   const consumer = await kafkaHelper.kafka.consumer({
-  //     groupId: config.KAFKA_TRANSACTIONS.DEPOSIT_WITHDRAW_GROUP_ID,
-  //   });
-  //   await consumer.subscribe({
-  //     topic: config.KAFKA_TRANSACTIONS.DEPOSIT_WITHDRAW_TOPIC,
-  //     fromBeginning: true,
-  //   });
-  //   await consumer.run({
-  //     eachMessage: async ({
-  //       topic,
-  //       partition,
-  //       message,
-  //     }: {
-  //       topic: any;
-  //       partition: any;
-  //       message: any;
-  //     }) => {
-  //       // console.log('🚀 ~ startDepositWithdrawQueue topic', topic);
-  //       // console.log('🚀 ~ startDepositWithdrawQueue message.value', message.value.toString());
-  //       await this.checkIfOurTx(JSON.parse(message.value.toString()));
-  //     },
-  //   }).catch((err: Error) => {
-  //     console.log('🔥 ~ startDepositWithdrawQueue consumer error', err);
-  //   });
-  // };
 
   public checkIfOurTx = async (data: TxType) => {
     if (data.amount == 0) {
       console.log("amount === 0")
     } else {
-      // console.log("amount is more than 0", data)
       let coinData: any = null;
       if (data.token) {
         coinData = data.token;
@@ -141,7 +114,6 @@ class EthDepositWithdrawProcess {
         txType: data.txType,
         trnx_fee: data.trnx_fee
       };
-      // console.log(webhookTx, "DEPOSIT");
       await this.SaveNewTrnx(webhookTx);
     }
   };
@@ -230,10 +202,6 @@ class EthDepositWithdrawProcess {
       console.log('results 2222222222 >>>>', results);
       if (results) {
         const [addressWithdraw, addressDeposit]: any = results as string[];
-        // console.log('addressWithdraw >>.', addressWithdraw);
-        // console.log('addressDeposit >>.', addressDeposit);
-        // console.log('addressWithdraw >>.', JSON.parse(addressWithdraw)?.user_id);
-        // console.log('addressDeposit >>.', JSON.parse(addressDeposit)?.user_id);
         const user_id: number = addressWithdraw ? JSON.parse(addressWithdraw)?.user_id : 0;
         const to_user_id: number = addressDeposit ? JSON.parse(addressDeposit)?.user_id : 0;
 
@@ -287,7 +255,6 @@ class EthDepositWithdrawProcess {
             coin_family: coin.coin_family,
             tx_type: tx_type,
             notification_type: trnxTypeD,
-            // state: "confirmed"
           };
           utilityHelper.SendNotification(notifData);
         }
@@ -345,7 +312,6 @@ class EthDepositWithdrawProcess {
             coin_family: coin.coin_family,
             coin_id: coin.coin_id,
             notification_type: trnxTypeW,
-            // state: "confirmed"
           };
 
           utilityHelper.SendNotification(notifData);

@@ -7,9 +7,7 @@ import { coinsModel } from "../models/tables";
 import redisClient from "../config/redis";
 
 
-
 class GlobalHelper {
-    //public async check_coin_in_wallet(wallet_address: string, coin: CoinInterface, balance: any) {
     public async checkCoinInWallet(wallet_address: string, coin: CoinInterface, balance: any): Promise<boolean> {
         try {
             // Input validation
@@ -50,7 +48,6 @@ class GlobalHelper {
                     coin_id: coin.coin_id,
                     coin_family: coin.coin_family,
                     balance: balance !== null ? balance : 0,
-                    // default_wallet: 1,
                     status: 1
                 };
 
@@ -120,7 +117,6 @@ class GlobalHelper {
             await this.saveErrorLogs("MAILGUN_ERROR", err.message)
         }
     }
-    // public async save_error_logs(fn_name: string, error_message: any) {
     public async saveErrorLogs(fn_name: string, error_message: any) {
         try {
             let value_exist: any = await ethProcessHelper.getKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.ETH_ERROR_LOGS)
@@ -142,7 +138,6 @@ class GlobalHelper {
             console.error("Error in saveErrorLogs", err)
         }
     }
-
 
 
     public async coinCreate(obj: any) {

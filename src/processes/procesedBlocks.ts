@@ -93,7 +93,6 @@ class EthBlockProcess {
                 BLOCK_DIFFERENCE: toBlockNumber - blockNumber,
                 TO_BLOCK_NUMBER: toBlockNumber
             });
-            // await this.getTxFromBlock(blockNumber, KEYS.latestBlock);
             this.getBlockReceipts(blockNumber);
             this.getTraceBlock(blockNumber);
         } catch (err: any) {
@@ -112,7 +111,6 @@ class EthBlockProcess {
                     let { id, start_block, end_block } = data_exists;
                     if (end_block > start_block) {
                         console.log("This block go for getTxFromBlock")
-                        // await this.getTxFromBlock(start_block, KEYS.behinedBlock);
                         this.getBlockReceipts(start_block);
                         this.getTraceBlock(start_block);
                         start_block = start_block + 1;
@@ -148,7 +146,6 @@ class EthBlockProcess {
             const specific_block: any = JSON.parse(specificBlocks);
             if (specific_block && Number(specific_block) > 0) {
                 console.table({ SPECIFIC_BLOCK: specific_block })
-                // await this.getTxFromBlock(specific_block, KEYS.readSpecificBlock)
                 this.getBlockReceipts(specific_block);
                 this.getTraceBlock(specific_block);
                 await ethProcessHelper.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.SPECIFIC_BLOCK_ETH, '0')
@@ -236,7 +233,6 @@ class EthBlockProcess {
             if (response?.length > 0) {
                 const allValueCalls = await this.processTraces(response);
 
-                // console.log("All calls with value > 0:", allValueCalls);
 
                 // Save to Kafka
                 for (const call of allValueCalls) {
@@ -250,7 +246,6 @@ class EthBlockProcess {
                         blockNumber: blockId,
                     };
 
-                    //   console.log(`Processed Tx at depth ${call.depth}`, txReceipt);
                     this.addTraceTxToQueue(txReceipt, this.trace_block_eth_deposit_topic);
                 }
 
@@ -378,7 +373,6 @@ class EthBlockProcess {
     private processLog = async (log: any, gasInfo: any, processedTokens: Set<string>) => {
 
 
-
         const contractInfo = await ethProcessHelper.checkIfContract(log.address);
         if (this.isTokenTransfer(log, contractInfo)) {
             //here  we have contractInfo.token_address
@@ -407,7 +401,6 @@ class EthBlockProcess {
                                     //here we need to check valid token address
                                     const isValidTokenAddress : boolean = await isValidToken(log.address);
 
-                                    //if not valid token address, return
                                     if (!isValidTokenAddress) {
                                         return;
                                     }
@@ -567,7 +560,6 @@ class EthBlockProcess {
                 data.toAddress
             ) {
 
-                // console.log("inside checkEthDeposit this is data.toAddress ", data.toAddress)
 
                 const addresses = [data.fromAddress, data.toAddress].filter(Boolean);
 
@@ -631,7 +623,6 @@ class EthBlockProcess {
 
     private async checkAddressInDB(txData: TxType) {
         try {
-            // let ourTrnx: any = null;
             const addresses = [txData.fromAddress, txData.toAddress].filter(Boolean);
 
             if (addresses.length > 0) {
