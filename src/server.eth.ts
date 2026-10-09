@@ -10,7 +10,6 @@ class ETHStartProcess {
     this.updateTxStatusProcess();
     this.ETHUpdateBalance();
     this.EthUpdateBalanceByWallet()
-    // this.testing_node()
   }
   public read_block_process() {
     schedule.scheduleJob("*/8 * * * * *", async function () {
@@ -18,11 +17,6 @@ class ETHStartProcess {
       await eth_blocks_process.readBehindBlock()
     });
   }
-  // public testing_node() {
-  //   schedule.scheduleJob("*/2 * * * * *", async function () {
-  //     await eth_blocks_process.testingNode();
-  //   });
-  // }
   public readSpecificBlock() {
     schedule.scheduleJob('*/1 * * * *', async function () {
       await eth_blocks_process.readSpecificBlock();
@@ -57,9 +51,6 @@ class ETHStartProcess {
 
   public async EthUpdateBalanceByWallet() {
     schedule.scheduleJob("*/5 * * * *", async function () {
-    //for testing 10 seconds
-      // schedule.scheduleJob("*/50 * * * * *", async function () {
-      // console.log("Runing  updateWalletBalanceByWallet")
       await ETH_balance_update.default.updateWalletBalanceByWallet();
     });
   }

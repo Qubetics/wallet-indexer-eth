@@ -84,7 +84,6 @@ class BlockchainHelper {
         } catch (error) {
             console.error(`Eth_Helper ERC20_Token_Fetch_Balance error >>`, error);
             return null;
-            // throw error;
         }
     }
 
@@ -105,7 +104,6 @@ class BlockchainHelper {
             return null;
         } catch (error) {
             console.error(`Eth_Helper ERC20_Token_Fetch_Balance error >>`, error);
-            // throw error;
             return null;
         }
     }
@@ -125,11 +123,9 @@ class BlockchainHelper {
             
         } catch (error: any) {
             console.error(`Eth_Helper Coin_Fetch_Balance error >>`, error);
-            // throw error;
             return null;
         }
     }
-
 
 
 }
