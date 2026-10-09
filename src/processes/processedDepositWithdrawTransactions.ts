@@ -145,7 +145,6 @@ class EthDepositWithdrawProcess {
               [Op.like]: from_address,
             },
             coin_id: coin.coin_id,
-            req_type: { [Op.notIn]: [TxReqTypesEnum.ALCHEMY, TxReqTypesEnum.TRANSAK] }
           },
           raw: true,
         });
@@ -174,7 +173,6 @@ class EthDepositWithdrawProcess {
               [Op.like]: to_address,
             },
             coin_id: coin.coin_id,
-            req_type: { [Op.notIn]: [TxReqTypesEnum.ALCHEMY, TxReqTypesEnum.TRANSAK] }
           },
           raw: true,
           logging: true
