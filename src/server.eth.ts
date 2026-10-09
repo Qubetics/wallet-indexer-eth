@@ -9,7 +9,6 @@ class ETHStartProcess {
     this.getPendingWithdrawalTxProcess();
     this.updateTxStatusProcess();
     this.ETHUpdateBalance();
-    // this.testing_node()
   }
   public read_block_process() {
     schedule.scheduleJob("*/8 * * * * *", async function () {
@@ -17,11 +16,6 @@ class ETHStartProcess {
       await eth_blocks_process.readBehindBlock()
     });
   }
-  // public testing_node() {
-  //   schedule.scheduleJob("*/2 * * * * *", async function () {
-  //     await eth_blocks_process.testingNode();
-  //   });
-  // }
   public readSpecificBlock() {
     schedule.scheduleJob('*/1 * * * *', async function () {
       await eth_blocks_process.readSpecificBlock();

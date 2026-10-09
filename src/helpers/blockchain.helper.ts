@@ -83,7 +83,6 @@ class BlockchainHelper {
               return 0;
         } catch (error) {
             console.error(`Eth_Helper ERC20_Token_Fetch_Balance error >>`, error);
-            // return 0;
 
             throw error;
         }
@@ -106,7 +105,6 @@ class BlockchainHelper {
             return 0;
         } catch (error) {
             console.error(`Eth_Helper ERC20_Token_Fetch_Balance error >>`, error);
-            // return 0;
             throw error;
         }
     }
@@ -116,7 +114,6 @@ class BlockchainHelper {
     ) => {
         try {
             const balance = await this.provider.getBalance(address);
-            // const etherBalance = ethers.formatEther(balance);  //// if you don't need the Utility_Helper:
             const tokenBalance = await Utility_Helper.bigNumberSafeMath(
                 balance.toString(),
                 "/",
@@ -127,12 +124,10 @@ class BlockchainHelper {
             
         } catch (error: any) {
             console.error(`Eth_Helper Coin_Fetch_Balance error >>`, error);
-            //return 0;
 
             throw error;
         }
     }
-
 
 
 }

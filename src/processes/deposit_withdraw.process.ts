@@ -1,6 +1,5 @@
 import { TxType, WebHookTxType } from "../types/ERC20Tokens.types";
 import { CoinInterface, NotificationInterface, TrnxHistoryModel } from "../models";
-// import rabbitMq from "../config/rabbitMq";
 import { config } from "../config/config";
 import ethProcessHelper from "./process.helper";
 import { BlockChainStatusEnum, CoinFamilyEnum, NotificationTypeEnum, TokenStandard, TrnxTypeEnum, TxReqTypesEnum } from "../enum";
@@ -40,12 +39,6 @@ class EthDepositWithdrawProcess {
     });
   };
 
-  // public startDepositQueue = async () => {
-  //   await rabbitMq.consumeQueue(
-  //     config.DEPOSIT_WITHDRAW_PROCESS_ETH || "",
-  //     this.checkIfOurTx
-  //   );
-  // };
 
   public checkIfOurTx = async (data: TxType) => {
     if (data.amount == 0) {
@@ -175,12 +168,6 @@ class EthDepositWithdrawProcess {
       }
       const newTrnx: any = await TrnxHistoryModel.create(trx_data);
 
-      // let coinFmlyTag: string = "";
-      // if (coin.is_token == BooleanEnum.true) {
-      //   coinFmlyTag = `(${coin.token_type.toUpperCase()})`;
-      // }
-
-
 
       if (Addressdeposit) {
         let trnxTypeD: string = "Deposit";
@@ -220,7 +207,6 @@ class EthDepositWithdrawProcess {
 
       if (AddressWithdraw) {
         let trnxTypeW: string = "Withdraw";
-        // let notificationTypeW: NotificationTypeEnum = NotificationTypeEnum.WITHDRAW;
 
         switch (tx_type) {
           case TrnxTypeEnum.SMARTCONTRACTINTERACTION:
@@ -255,9 +241,6 @@ class EthDepositWithdrawProcess {
 
         let notiMsg = coin?.token_type == TokenStandard.ERC721 ? `${trnxTypeW} request of NFT(${coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
 
-        // const notiMsg = `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(
-        //   amount
-        // )} ${coin.coin_symbol?.toUpperCase()} has been confirmed.`;
 
         let notifData: NotificationInterface = {
           title: trnxTypeW?.toUpperCase(),
