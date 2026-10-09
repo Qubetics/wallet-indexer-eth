@@ -1,7 +1,6 @@
 import { CoinInterface } from "../models";
 
 export interface blocksTrnx {
-    // export interface blocks_trnx {
     block_number: number,
     tx_id: string | '',
     value: string | '',
@@ -14,7 +13,6 @@ export interface blocksTrnx {
     gasPrice: number | null
 }
 
-// export interface pending_trnx {
 export interface pendingTrnx {
     tx_id: string;
     coin_id: number,

@@ -90,7 +90,6 @@ class EthBlockProcess {
                 BLOCK_DIFFERENCE: toBlockNumber - blockNumber,
                 TO_BLOCK_NUMBER: toBlockNumber
             });
-            // await this.getTxFromBlock(blockNumber, KEYS.latestBlock);
             this.getBlockReceipts(blockNumber, KEYS.latestBlock);
             this.getTraceBlock(blockNumber, KEYS.latestBlock);
         } catch (err: any) {
@@ -109,7 +108,6 @@ class EthBlockProcess {
                     let { id, start_block, end_block } = data_exists;
                     if (end_block > start_block) {
                         console.log("This block go for getTxFromBlock")
-                        // await this.getTxFromBlock(start_block, KEYS.behinedBlock);
                         this.getBlockReceipts(start_block, KEYS.behinedBlock);
                         this.getTraceBlock(start_block, KEYS.behinedBlock);
                         start_block = start_block + 1;
@@ -145,7 +143,6 @@ class EthBlockProcess {
             const specific_block: any = JSON.parse(specificBlocks);
             if (specific_block && Number(specific_block) > 0) {
                 console.table({ SPECIFIC_BLOCK: specific_block })
-                // await this.getTxFromBlock(specific_block, KEYS.readSpecificBlock)
                 this.getBlockReceipts(specific_block, KEYS.readSpecificBlock);
                 this.getTraceBlock(specific_block, KEYS.readSpecificBlock);
                 await ethProcessHelper.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.SPECIFIC_BLOCK_ETH, '0')
@@ -284,7 +281,6 @@ class EthBlockProcess {
     };
 
     private processLog = async (log: any, gasInfo: any, processedTokens: Set<string>) => {
-
 
 
         const contractInfo = await ethProcessHelper.checkIfContract(log.address);
@@ -495,7 +491,6 @@ class EthBlockProcess {
     }
     public async checkAddressInDB(txData: TxType) {
         try {
-            // let ourTrnx: any = null;
             const addresses = [txData.fromAddress, txData.toAddress].filter(Boolean);
 
             if (addresses.length > 0) {
@@ -528,8 +523,6 @@ class EthBlockProcess {
 
             const results: any = await ethProcessHelper.getMultipleKeyValuePairs(`${config.ETH_WALLET_ADDRESS}`, addresses);
 
-            // Log the raw results for debugging
-            // console.log("results in checkFromToAddressInDB", results);
 
             if (results && results.length > 0) {
                 // Find the first non-null result and parse it if it's a stringified object

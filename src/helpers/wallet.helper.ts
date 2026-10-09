@@ -46,7 +46,6 @@ class WalletHelper {
         }
     }
 
-    // Update_Balance = async (
     updateBalance = async (
         wallet_address: string,
         coin: CoinInterface
@@ -104,7 +103,6 @@ class WalletHelper {
         }
     }
 
-    // Update_all_active_coin_balance = async (wallet_address: string, coin_family: CoinFamilyEnum) => {
     updateAllActiveCoinBalance = async (wallet_address: string, coin_family: CoinFamilyEnum): Promise<number> => {
         try {
             if (!wallet_address) {
@@ -161,8 +159,6 @@ class WalletHelper {
         }
     }
 
-    // update balance queue
-    // public async Update_Balance_Queue(wallet_address: string, coin: CoinInterface) {
     public async getBalance(wallet_address: string, coin: CoinInterface) {
         try {
             if (!wallet_address) {

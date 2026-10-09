@@ -38,10 +38,6 @@ let dataObj = {
     type: DataTypes.DOUBLE,
     allowNull: false,
   },
-  // default_wallet: {
-  //   type: DataTypes.TINYINT,
-  //   allowNull: true,
-  // },
   status: {
     type: DataTypes.TINYINT,
     allowNull: true,
@@ -50,10 +46,6 @@ let dataObj = {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
-  // is_private_wallet: {
-  //   type: DataTypes.TINYINT,
-  //   allowNull: true,
-  // },
 };
 
 let dataObjIndex = {
@@ -70,10 +62,6 @@ let dataObjIndex = {
       unique: false,
       fields: ["coin_id"],
     },
-    // {
-    //   unique: false,
-    //   fields: ["default_wallet"],
-    // },
     {
       unique: false,
       fields: ["status"],
@@ -92,7 +80,6 @@ WalletModel.belongsTo(CoinsModel, {
   targetKey: "coin_id",
   as: "coin_data"
 });
-
 
 
 export default WalletModel;
