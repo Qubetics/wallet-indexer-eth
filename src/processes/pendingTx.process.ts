@@ -1,4 +1,3 @@
-// import rabbitMq from "../config/rabbitMq";
 import { config } from "../config/config";
 import { Op } from "sequelize";
 import { BlockChainStatusEnum } from "../enum";
@@ -41,11 +40,6 @@ class ETHPendingWithdrawalProcess {
 
   public addTxToQueue = async (data: pending_trnx) => {
     await kafkaHelper.produceMessage(this.eth_pending_withdrawal_tx_topic, data);
-    // await rabbitMq.assertQueue(config.PENDING_WITHDRAWAL_TX_PROCESS_ETH || "");
-    // await rabbitMq.sendToQueue(
-    //   config.PENDING_WITHDRAWAL_TX_PROCESS_ETH || "",
-    //   Buffer.from(JSON.stringify(data))
-    // );
   };
 }
 

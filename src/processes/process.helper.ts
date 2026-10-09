@@ -73,26 +73,10 @@ class EthProcessHelper {
       } else {
         await this.setKeyValuePair(config.REDISKEYS.ALL_PROCESSES, config.REDISKEYS.NODE_ALERT_ETH, '0')
       }
-      // let blocks: any = [];
-      // let dataToInsert: any = [];
-      // for (let i: any = old_block; i <= current_block; i++) {
-      // blocks.push(i)
       let dataToInsert = { block_number: old_block, coin_family: config.STATIC_COIN_FAMILY.ETH, start_block: old_block, end_block: current_block, status: 0 }
-      // }
       console.log("dataToInsert>>>>", dataToInsert)
-      // await EthOldBLockModel.destroy({ where: { block_number: { [Op.in]: blocks } } })
       await EthOldBLockModel.create(dataToInsert)
       return true;
-      // REDIS BASED
-      // for (let i: any = old_block; i <= current_block; i++) {
-      //   let data_exist: any = await this.getKeyValuePair(config.READ_BEHINED_BLOCK_ETH, i.toString())
-      //   if (data_exist) {
-      //     console.log("This block exist in redis read behined", i)
-      //   } else {
-      //     await this.setKeyValuePair(config.READ_BEHINED_BLOCK_ETH, i.toString(), i.toString())
-      //   }
-      // }
-      // return true;
     } catch (err: any) {
       console.error("💥 ~ Error in diff_blocks_add_in_redis.", err)
       await global_helper.save_error_logs('ETH_diff_blocks_add_in_db', err.message)
@@ -100,31 +84,7 @@ class EthProcessHelper {
     }
   }
 
-  // public async getLastBlockProcessed(blockNumber: number) {
-  //   try {
-  //     const getAsync = promisify(redisClient.get).bind(redisClient);
-  //     const value = await getAsync(config.LAST_BLOCK_NUMBER || "");
-  //     if (value) return parseInt(value);
-  //     redisClient.set(
-  //       config.LAST_BLOCK_NUMBER || "",
-  //       blockNumber.toString()
-  //     );
-  //   } catch (error: any) {
-  //     console.error('getLastBlockProcessed >>>', error);
-  //   }
-  // }
 
-  // public async updateLastBlockProcessed(lastBlockProcessed: number) {
-  //   try {
-  //     const updatedBlockNumber = ++lastBlockProcessed;
-  //     redisClient.set(
-  //       config.LAST_BLOCK_NUMBER || "",
-  //       updatedBlockNumber.toString()
-  //     );
-  //   } catch (error: any) {
-  //     console.error('updateLastBlockProcessed >>>>', error)
-  //   }
-  // }
   public async getHashTable(keyName: string) {
     try {
       const getAsync: any = promisify(redisClient.hvals).bind(redisClient)
@@ -148,7 +108,6 @@ class EthProcessHelper {
       return false;
     }
   }
-
 
 
   public fetchERC20Tokens = async () => {
@@ -252,7 +211,6 @@ class EthProcessHelper {
         console.log("wallet_Data>>>>>>>>", wallet_data)
       }
       return JSON.parse(wallet_data);
-      // return address_data ? JSON.parse(address_data) : {};
     } catch (error: any) {
       console.error('check_our_wallet_address >>>>>', error);
       return null;

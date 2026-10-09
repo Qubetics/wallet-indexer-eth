@@ -1,4 +1,3 @@
-// import rabbitMq from "../config/rabbitMq";
 import { config } from "../config/config";
 import { BlockChainStatusEnum, BooleanEnum, CoinFamilyEnum, NotificationTypeEnum, TokenStandard, TrnxTypeEnum } from "../enum";
 import { NotificationInterface, TrnxHistoryModel } from "../models";
@@ -9,12 +8,6 @@ import { global_helper } from "../helpers/global_helper";
 import kafkaHelper from "../config/kafka.helper";
 import { pending_trnx } from "../interfaces/global_helper";
 class EthTxStatusUpdateProcess {
-  // public startTxStatusUpdateQueue = async () => {
-  //   await rabbitMq.consumeQueue(
-  //     config.PENDING_WITHDRAWAL_TX_PROCESS_ETH || "",
-  //     this.getTx
-  //   );
-  // };
 
   public startTxStatusUpdateQueue = async () => {
     let consumer = await kafkaHelper.kafka.consumer({ groupId: config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_GROUP_ID });
@@ -160,9 +153,6 @@ class EthTxStatusUpdateProcess {
       let tx_type = txnData?.type
       let coin_symbol = trx_data?.coin?.coin_symbol
       let coin_family = txnData.coin_family;
-      // let amount_in_fiat = txnData.amount_in_fiat;
-      // let fiat_type = txnData.fiat_type;
-      // let cmc_id = trx_data?.coin?.cmc_id;
       //Update transaction status
       let txUpdateRes = await TrnxHistoryModel.update({ blockchain_status: status_tx, tx_fee: trx_data.tx_fee, gas_reverted: trx_data.gas_reverted }, { where: { id: tx_row_id } })
       if (txUpdateRes) {
@@ -170,10 +160,6 @@ class EthTxStatusUpdateProcess {
           /** save rewrad */
           if (tx_type == TrnxTypeEnum.SWAP) {
             console.log("transaction >>", tx_type, "transaction id ", tx_row_id)
-            // if (amount_in_fiat && amount_in_fiat > 0) {
-            //   //REWARD_PERCENTAGE
-            //   await Db_Helper.save_reward({ tx_id: tx_row_id, type: tx_type, amount_in_fiat: amount_in_fiat, user_id: user_id, fiat_type: fiat_type, cmc_id: cmc_id })
-            // }
           }
 
           let AddressWithdraw: any = await ethProcessHelper.check_our_wallet_address(from_address);
@@ -209,9 +195,6 @@ class EthTxStatusUpdateProcess {
             }
             let notiMsg = trx_data.coin?.token_type == TokenStandard.ERC721 ?
               `Withdraw request of NFT(${coin_symbol.toUpperCase()} ) with token id ${amount} has been confirmed.` : `Withdraw request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${coin_symbol.toUpperCase()} has been confirmed.`;
-            // const notiMsg = `${trnxTypeW} of ${await Utility_Helper.bigNumberSafeConversion(
-            //   amount
-            // )} ${coin_symbol.toUpperCase()} has been confirmed.`;
 
             let notifData: NotificationInterface = {
               title: trnxTypeW.toUpperCase(),
@@ -233,23 +216,6 @@ class EthTxStatusUpdateProcess {
           let Addressdeposit: any = await ethProcessHelper.check_our_wallet_address(to_address);
           if (Addressdeposit) {
             let to_user_id: number = Addressdeposit ? Addressdeposit.user_id : 0;
-            // let trnxTypeD: string = "Deposit";
-            // switch (tx_type) {
-            //   case TrnxTypeEnum.DAPP:
-            //     trnxTypeD = "Smart Contract Execution";
-            //     break;
-            //   case TrnxTypeEnum.APPROVE:
-            //     trnxTypeD = "Approval";
-            //     break;
-            //   case TrnxTypeEnum.SWAP:
-            //     trnxTypeD = "Swap";
-            //     break;
-            //   case TrnxTypeEnum.CROSS_CHAIN:
-            //     trnxTypeD = "Cross-chain Swap";
-            //     break;
-            //   default:
-            //     break;
-            // }
             /** update to adrs wallet balance */
             if (to_address !== from_address) {
               if (tx_type !== TrnxTypeEnum.DAPP) {
@@ -267,10 +233,6 @@ class EthTxStatusUpdateProcess {
             let notiMsg = trx_data?.coin?.token_type == TokenStandard.ERC721 ?
               `Deposit of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been confirmed.` : `Deposit of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been confirmed.`;
 
-
-            // const notiMsg = `${trnxTypeD} of ${await Utility_Helper.bigNumberSafeConversion(
-            //   amount
-            // )} ${trx_data?.coin?.coin_symbol.toUpperCase()} has been confirmed.`;
 
             let notifData: NotificationInterface = {
               title: NotificationTypeEnum.DEPOSIT.toUpperCase(),
@@ -314,7 +276,6 @@ class EthTxStatusUpdateProcess {
           let notiMsg = trx_data?.coin?.token_type == TokenStandard.ERC721 ?
             `Withdraw of NFT(${trx_data?.coin.coin_symbol}) with token id ${amount} has been failed.` : `Withdraw of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol} has been failed.`;
 
-          // let notiMsg = trx_data?.coin.token_type === "ERC721" ? `Withdraw of NFT(${trx_data?.coin.coin_symbol.toUpperCase()}) with token id ${amount} has been confirmed.` : `${trnxTypeW} request of ${await Utility_Helper.bigNumberSafeConversion(amount)} ${trx_data?.coin.coin_symbol.toUpperCase()} has been failed.`;
           let notifData: NotificationInterface = {
             title: trnxTypeW.toUpperCase(),
             message: notiMsg,
@@ -347,4 +308,3 @@ class EthTxStatusUpdateProcess {
   }
 }
 export const ethTxStatusUpdateProcess = new EthTxStatusUpdateProcess();
-// export default ethTxStatusUpdateProcess;

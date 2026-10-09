@@ -3,7 +3,6 @@ import { config } from "../config/config";
 import ethProcessHelper from "./process.helper";
 import { KEYS } from "../enum";
 import { blocks_trnx } from "../interfaces/global_helper";
-// import rabbitMq from "../config/rabbitMq";
 import { EthOldBLockModel } from "../models";
 import { Op } from "sequelize";
 import { global_helper } from "../helpers/global_helper";
@@ -26,10 +25,6 @@ class Eth_block_process {
     public async getBlocks() {
         try {
             /** Testing */
-            // let { getBlockNumber } = Blockchain_Helper.Web3.eth;
-            // let latestBlock = await getBlockNumber();
-            // console.log("latestBlock>>", latestBlock)
-            // return;
             let old_block: any = await ethProcessHelper.getKeyValuePair(config.REDISKEYS.ETH_BLOCKS, config.REDISKEYS.OLD_BLOCK_ETH)
             let new_block: any = await ethProcessHelper.getKeyValuePair(config.REDISKEYS.ETH_BLOCKS, config.REDISKEYS.NEW_BLOCK_ETH)
             if (!old_block) {
@@ -66,10 +61,8 @@ class Eth_block_process {
     }
     public async readBlocks(blockNumber: number, toBlockNumber: number) {
         try {
-            // console.log("blockNumber", blockNumber)
             let block_updated: number = blockNumber + 1;
             await ethProcessHelper.setKeyValuePair(config.REDISKEYS.ETH_BLOCKS, config.REDISKEYS.OLD_BLOCK_ETH, block_updated.toString());
-            // console.log("blockNumber updated", block_updated)
             console.table({
                 LATEST_BLOCK: blockNumber,
                 BLOCK_DIFFERENCE: toBlockNumber - blockNumber,
@@ -101,7 +94,6 @@ class Eth_block_process {
                 return; // Exit early if there are no transactions
             }
             const transactionPromises = blockInfo.transactions.map(async (tx) => {
-                // console.log('tx.hash >>', tx.hash, 'blockId >>>', blockId);
 
                 const data: blocks_trnx = {
                     block_number: blockId,
@@ -119,9 +111,6 @@ class Eth_block_process {
 
                 try {
                     await kafkaHelper.produceMessage(targetTopic, data);
-                    // If you were using RabbitMQ, you'd uncomment the appropriate line:
-                    // const queue = (key === KEYS.latestBlock) ? config.TRANSACTIONS.eth_all_blocks : config.KAFKA_BLOCKS.eth_behined_block_topic;
-                    // rabbitMq.send_tx_to_queue(queue, Buffer.from(JSON.stringify(data)));
                 } catch (err) {
                     console.error("Error while producing message for transaction", tx.hash, err);
                 }
@@ -129,39 +118,6 @@ class Eth_block_process {
 
             // Wait for all the transaction processing to complete
             await Promise.allSettled(transactionPromises);
-            // if (blockInfo) {
-            //     if (blockInfo.transactions) {
-            //         for await (let tx of blockInfo.transactions) {
-            //             console.log('tx.hash >>', tx.hash, 'blockId >>>', blockId);
-            //             let data: blocks_trnx = {
-            //                 block_number: blockId,
-            //                 tx_id: tx.hash ? tx.hash : '',
-            //                 value: tx.value ? tx.value : '',
-            //                 fromAddress: tx.from ? tx.from : '',
-            //                 toAddress: tx.to ? tx.to : '',
-            //                 retry_count: 0,
-            //                 key: null,
-            //                 pair: null
-            //             }
-            //             if (key == KEYS.latestBlock) {
-            //                 data.key = 'latest';
-            //                 // let queue_length: any = await rabbitMq.queue_length(config.TRANSACTIONS.eth_all_blocks)
-            //                 // console.log("queue_length>>>", queue_length)
-            //                 await kafkaHelper.produceMessage(this.eth_block_tx_topic, data);
-            //                 //rabbitMq.send_tx_to_queue(config.TRANSACTIONS.eth_all_blocks, Buffer.from(JSON.stringify(data)))
-            //             } else {
-            //                 data.key = 'behined & specific'
-            //                 await kafkaHelper.produceMessage(this.eth_behind_block_tx_topic, data);
-            //                 //rabbitMq.send_tx_to_queue(config.KAFKA_BLOCKS.eth_behined_block_topic, Buffer.from(JSON.stringify(data)))
-            //             }
-            //         }
-            //     } else {
-            //         console.log("no block info trnasactions")
-            //     }
-            // } else {
-            //     console.log("No blockinfo");
-            //     await EthOldBLockModel.create({ block_number: blockId, coin_family: config.STATIC_COIN_FAMILY.BNB, start_block: blockId, end_block: blockId, status: 0 })
-            // }
         } catch (err: any) {
             console.error("Error in getTxFromBlock:", (err as Error).message);
             await global_helper.save_error_logs('Eth_readBehindBlock', err.message)
@@ -189,7 +145,6 @@ class Eth_block_process {
                         await ethProcessHelper.setKeyValuePair(config.BLOCKS, config.READ_BEHINED_BLOCK_ETH, JSON.stringify(add_data))
                     } else {
                         console.log("id>>>>>>>>>>>", id)
-                        // await EthOldBLockModel.destroy({ where: { id: id } })
                         await EthOldBLockModel.update({ status: 1 }, { where: { id: id } })
                         await ethProcessHelper.deleteKeyValuePair(config.BLOCKS, config.READ_BEHINED_BLOCK_ETH)
 
@@ -202,15 +157,6 @@ class Eth_block_process {
                 await ethProcessHelper.behindBlocks()
             }
 
-            // REDIS BASED
-            // let data: any = await ethProcessHelper.getHashTable(config.READ_BEHINED_BLOCK_ETH)
-            // console.log("data?>>??", data.length)
-            // if (data.length > 0) {
-            //     for (let i: number = 0; i < data.length; i++) {
-            //         await eth_blocks_process.getTxFromBlock(Number(data[i]), KEYS.behinedBlock);
-            //         await ethProcessHelper.deleteKeyValuePair(config.READ_BEHINED_BLOCK_ETH, data[i].toString())
-            //     }
-            // }
         } catch (err: any) {
             console.error("Error in readBehindBlock>>", err)
             await global_helper.save_error_logs('ETH_readBehindBlock', err.message)
