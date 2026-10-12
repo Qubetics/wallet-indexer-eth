@@ -4,7 +4,7 @@ import { CoinInterface, CoinsModel, EthOldBLockModel, WalletInterface } from "..
 import redisClient from "../config/redis";
 import { promisify } from "util";
 import { config } from "../config/config";
-import { BooleanEnum, CoinFamilyEnum, TokenStandard } from "../enum";
+import { TokenStandard } from "../enum";
 import { global_helper } from "../helpers/global_helper";
 import { Blockchain_Helper } from "../helpers";
 import { Op } from "sequelize";
