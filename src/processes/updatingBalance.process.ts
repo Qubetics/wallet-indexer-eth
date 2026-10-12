@@ -8,7 +8,7 @@ import { GasPrice } from "../models/tables/model.gas_price";
 
 // Fix: Import STATIC_COIN_FAMILY from the correct config location
 import { config as appConfig } from "../config/config";
-const { ETH, BNB, POL, BTC, TRX, SOL } = appConfig.STATIC_COIN_FAMILY;
+const { ETH } = appConfig.STATIC_COIN_FAMILY;
 
 class UpdateBalanceController {
 
