@@ -4,7 +4,5 @@ export { DeviceTokenInterface } from './interface.deviceTokens';
 export { ITrnxHistoryInterface } from './interface.trnxHistory';
 export { WalletInterface } from './interface.wallets';
 export { EthOldBlockInterface } from './interface.ethOldBlock';
-export { SettingsInterface } from './interface.settings';
 export { CatchErrorMsgsInterface } from './interface.catchErrorLogs';
-export { CoinPriceInFiatInterface } from './interface.coinPriceFiat';
 export { CustomTokenInterface } from './interface.customTokens';

@@ -1,10 +1,10 @@
-export type AbiInput = {
+type AbiInput = {
   name: string;
   type: string;
   indexed?: boolean;
 };
 
-export type AbiOutput = {
+type AbiOutput = {
   name: string;
   type: string;
 };
