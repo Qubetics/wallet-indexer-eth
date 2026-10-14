@@ -442,7 +442,9 @@ class EthBlockProcess {
             this.approval_by_partition,
             this.transfer_by_partition,
             this.processed_dividend_tracker,
-            this.dividend_withdrawn
+            this.dividend_withdrawn,
+            this.swap,
+            this.deposit
         ];
         return excludedTopics.includes(topic);
     };
