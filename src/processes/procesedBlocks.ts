@@ -446,7 +446,8 @@ class EthBlockProcess {
             this.processed_dividend_tracker,
             this.dividend_withdrawn,
             this.swap,
-            this.swapV2
+            this.swapV2,
+            this.deposit
         ];
         return excludedTopics.includes(topic);
     };
