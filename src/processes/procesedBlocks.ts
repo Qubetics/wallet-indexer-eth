@@ -497,7 +497,7 @@ class EthBlockProcess {
     private processTokenTransfer = async (log: any, gasInfo: any, contractInfo: any) => {
         const amount = await this.calculateTokenAmount(log.data, contractInfo.decimals);
 
-        if (amount <= 0) {
+        if (!(Number(amount) > 0)) {
             return;
         }
 
@@ -518,7 +518,7 @@ class EthBlockProcess {
 
     private processNotExistTokenTransfer = async (log: any, gasInfo: any, contractInfo: any, txType: TrnxTypeEnum.DEPOSIT) => {
         const amount = await this.calculateTokenAmount(log.data, contractInfo.decimals);
-        if (amount <= 0) {
+        if (!(Number(amount) > 0)) {
             return;
         }
 
