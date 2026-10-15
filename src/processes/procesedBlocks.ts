@@ -8,7 +8,7 @@ import { globalHelper } from "../helpers/global.helper";
 import kafkaHelper from "../config/kafka.helper";
 import { ethers, TransactionReceipt } from "ethers";
 import { TxType } from "../types/ERC20Tokens.types";
-import { BigNumber } from "bignumber.js";
+import BigNumber from "bignumber.js";
 import { ethEther } from "../helpers/ether_eth_helpers";
 import { TokenData } from "../interfaces/ether.interface";
 
