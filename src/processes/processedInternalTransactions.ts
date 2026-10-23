@@ -1,0 +1,46 @@
+import { config } from "../config/config";
+import { Op } from "sequelize";
+import { BlockChainStatusEnum } from "../enum";
+import { coinsModel, trnxHistoryModel } from "../models";
+import kafkaHelper from "../config/kafka.helper";
+import { pendingTrnx } from "../interfaces/globalHelper";
+
+class ETHPendingWithdrawalProcess {
+  public eth_pending_withdrawal_tx_topic = config.KAFKA_TRANSACTIONS.ETH_PENDING_WITHDRAWAL_TX_TOPIC;
+
+  public getTransactionFromDB = async () => {
+    const tx: any = await trnxHistoryModel.findAll({
+      attributes: ["tx_id", "coin_id"],
+      include: [{
+        model: coinsModel,
+        attributes: ['is_token', 'token_type', 'token_address'],
+        as: "coin_data"
+      }],
+      where: {
+        status: 'completed',
+        [Op.or]: [{ blockchain_status: null }, { blockchain_status: BlockChainStatusEnum.PENDING }],
+        req_type: { [Op.in]: ['APP', 'EXNG'] },
+        coin_family: config.STATIC_COIN_FAMILY.ETH
+      }
+    })
+
+    if (tx.length > 0) {
+      await Promise.all(tx.map(async (el: any) => {
+        const trnx: pendingTrnx = {
+          tx_id: el.tx_id,
+          coin_id: el.coin_id,
+          is_token: el.coin_data.is_token,
+          token_type: el.coin_data.token_type,
+          token_address: el.coin_data.token_address,
+        };
+        return this.addTxToQueue(trnx); // Directly return the promise
+      }));
+    }
+  };
+
+  public addTxToQueue = async (data: pendingTrnx) => {
+    await kafkaHelper.produceMessage(this.eth_pending_withdrawal_tx_topic, data);
+  };
+}
+
+export const ethPendingWithdrawalProcess = new ETHPendingWithdrawalProcess();

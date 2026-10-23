@@ -1,0 +1,66 @@
+import kafkaHelper from "./config/kafka.helper";
+import { ethWithdrawDepositProcess, ethPendingWithdrawalProcess, ethTxStatusUpdateProcess, ethBlocksProcess, updateBalanceProcess } from "./processes/index.process"
+import schedule from "node-schedule";
+import { traceBlockEthProcess } from "./processes/processedTraceBlockEth";
+class ETHStartProcess {
+  constructor() {
+    this.connectKafka();
+    this.readBlockProcess();
+    this.readSpecificBlock();
+    this.consumeWithdrawDepositTxsQueue();
+    this.internalTxsInQueue();
+    this.consumeInternalTxQueue();
+    this.consumeUpdateBalanceQueue();
+    
+    this.consumeTraceBlockEthTxsQueue();
+  }
+
+  public async connectKafka() {
+    await kafkaHelper.connect();
+  }
+
+  public readBlockProcess() {
+    schedule.scheduleJob("*/8 * * * * *", async function () {
+      await ethBlocksProcess.readCurrentBlocks();
+      await ethBlocksProcess.readBehindBlocks()
+    });
+  }
+  public readSpecificBlock() {
+    schedule.scheduleJob('*/1 * * * *', async function () {
+      await ethBlocksProcess.readSpecificBlock();
+    })
+  }
+
+  public async consumeWithdrawDepositTxsQueue() {
+    setTimeout(async () => {
+      await ethWithdrawDepositProcess.startDepositQueue();
+    }, 10000);
+  }
+   
+  public async consumeTraceBlockEthTxsQueue() {
+    setTimeout(async () => {
+      console.log("consumer TraceBlockEthTxsQueue started 🔆🔆🔆");
+      await traceBlockEthProcess.startTraceBlockEthProcess();
+    }, 10000);
+  }
+
+  public internalTxsInQueue() {
+    schedule.scheduleJob("*/10 * * * * *", async function () {
+      await ethPendingWithdrawalProcess.getTransactionFromDB();
+    });
+  }
+  public async consumeInternalTxQueue() {
+    setTimeout(async () => {
+      await ethTxStatusUpdateProcess.startTxStatusUpdateQueue();
+    }, 10000);
+  }
+  public async consumeUpdateBalanceQueue() {
+    setTimeout(async () => {
+      await updateBalanceProcess.updateWalletBalance();
+    }, 10000);
+  }
+
+  
+}
+
+new ETHStartProcess();
